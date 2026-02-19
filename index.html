@@ -6,7 +6,7 @@
 <title>⛽ Gas Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
@@ -666,12 +666,17 @@ async function markPaid(userName, buyerId) {
 async function renderQRCodes() {
   const el = document.getElementById('qr-grid');
   if (!el) return;
-  if (buyers.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet</p>';
+
+  if (typeof QRCode === 'undefined') {
+    el.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;padding:10px 0">QR library failed to load. Check your internet connection and refresh.</p>';
     return;
   }
 
-  // Get remaining cans per buyer
+  if (buyers.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
+    return;
+  }
+
   const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
   (allEntries || []).forEach(e => {
@@ -685,12 +690,15 @@ async function renderQRCodes() {
     const used = usedPerBuyer[b.id] || 0;
     const remaining = Math.max(0, b.cans_bought - used);
     const depleted = remaining === 0;
+    const url = appUrl + '?buyer=' + b.id;
 
     const div = document.createElement('div');
     div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
 
-    const canvas = document.createElement('canvas');
-    div.appendChild(canvas);
+    // qrcodejs needs a div target, not canvas
+    const qrDiv = document.createElement('div');
+    qrDiv.style.cssText = 'display:flex;justify-content:center;margin-bottom:8px;border-radius:8px;overflow:hidden';
+    div.appendChild(qrDiv);
 
     const nameEl = document.createElement('div');
     nameEl.className = 'qr-buyer-name';
@@ -704,14 +712,19 @@ async function renderQRCodes() {
 
     el.appendChild(div);
 
-    const url = appUrl + '?buyer=' + b.id;
     try {
-      await QRCode.toCanvas(canvas, url, {
+      new QRCode(qrDiv, {
+        text: url,
         width: 130,
-        margin: 1,
-        color: { dark: '#000000', light: '#ffffff' }
+        height: 130,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
       });
-    } catch(e) { console.error('QR error:', e); }
+    } catch(e) {
+      console.error('QR error for ' + b.name + ':', e);
+      qrDiv.innerHTML = '<p style="color:var(--red);font-size:11px">QR error</p>';
+    }
   }
 }
 
