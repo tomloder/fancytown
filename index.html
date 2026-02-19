@@ -104,6 +104,10 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .conn-bar { background: var(--surface2); padding: 6px 20px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
 
+  .can-btns { display: flex; gap: 10px; margin-bottom: 14px; }
+  .can-btn { flex: 1; padding: 16px 0; border-radius: 12px; border: 2px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 28px; cursor: pointer; transition: all 0.15s; }
+  .can-btn:active { transform: scale(0.95); }
+  .can-btn.selected { border-color: var(--accent); background: var(--accent); color: #000; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
   .add-buyer-form { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 12px; }
   .add-buyer-form label { margin-top: 8px; }
@@ -112,8 +116,8 @@
   .inline-row > div { flex: 1; }
 
   /* QR CODE PRINT */
-  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
-  .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; max-width: 100%; }
+  .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; min-width: 0; overflow: hidden; }
   .qr-card canvas { border-radius: 8px; display: block; margin: 0 auto 8px; }
   .qr-buyer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
   .qr-cans { font-size: 11px; color: var(--muted); }
@@ -142,7 +146,7 @@
   <div class="conn-bar" id="conn-bar"><span class="spinner"></span> Connecting...</div>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
-    <div class="tab" onclick="switchTab('log')">Log Use</div>
+    <div class="tab" onclick="switchTab('log')">Buy Gas</div>
     <div class="tab" onclick="switchTab('pay')">Payments</div>
     <div class="tab" onclick="switchTab('admin')">Admin</div>
   </div>
@@ -177,7 +181,7 @@
 
   <!-- LOG USAGE -->
   <div id="tab-log" class="section">
-    <div class="section-heading">Log Gas Usage</div>
+    <div class="section-heading">Buy Gas</div>
     <div class="card">
       <label>Your Name</label>
       <input type="text" id="log-name" placeholder="e.g. Mike" />
@@ -185,18 +189,18 @@
       <select id="log-buyer">
         <option value="">— Select buyer —</option>
       </select>
-      <label>Number of Cans Used</label>
-      <input type="number" id="log-cans" placeholder="1" min="1" step="1" />
-      <label>Date</label>
-      <input type="date" id="log-date" />
-      <label>Notes (optional)</label>
-      <input type="text" id="log-notes" placeholder="e.g. generator, lawn mower..." />
-      <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Log Usage</button>
+      <label>Number of Cans</label>
+      <div class="can-btns" id="can-btns">
+        <button class="can-btn" onclick="selectCans(1)">1</button>
+        <button class="can-btn" onclick="selectCans(2)">2</button>
+        <button class="can-btn" onclick="selectCans(3)">3</button>
+        <button class="can-btn" onclick="selectCans(4)">4</button>
+        <button class="can-btn" onclick="selectCans(5)">5</button>
+      </div>
+      <input type="hidden" id="log-cans" value="" />
+      <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Buy Gas</button>
     </div>
-    <div class="card">
-      <div class="card-title">All Recent Entries (Everyone)</div>
-      <div id="recent-entries"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-    </div>
+
   </div>
 
   <!-- PAYMENTS -->
@@ -210,9 +214,7 @@
     <div class="section-heading">Admin Settings</div>
 
     <div class="card">
-      <div class="card-title">Daily Setup</div>
-      <label>Starting Cans Per Day</label>
-      <input type="number" id="admin-cans" placeholder="10" min="1" />
+      <div class="card-title">Price Per Gallon</div>
       <label>Price Per Gallon ($)</label>
       <input type="number" id="admin-price" placeholder="3.50" step="0.01" min="0" />
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
@@ -269,7 +271,7 @@ let buyers = []; // array of { id, name, cans_bought, venmo_handle, phone }
 async function init() {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   document.getElementById('main-app').style.display = 'block';
-  document.getElementById('log-date').value = todayStr();
+
   await Promise.all([loadSettings(), loadBuyers()]);
   renderDashboard();
   subscribeRealtime();
@@ -300,7 +302,7 @@ function checkURLParams() {
 function subscribeRealtime() {
   sb.channel('gas_tracker')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => {
-      renderDashboard(); renderRecentEntries(); renderPayments(); populateBuyerSelect();
+      renderDashboard(); renderPayments(); populateBuyerSelect();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
@@ -323,13 +325,12 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
-  const cans = parseInt(document.getElementById('admin-cans').value);
   const price = parseFloat(document.getElementById('admin-price').value);
-  if (!cans || cans < 1 || isNaN(price) || price < 0) { showToast('⚠️ Check values', true); return; }
-  const { error } = await sb.from('settings').upsert({ id: 1, starting_cans: cans, price_per_gallon: price });
+  if (isNaN(price) || price < 0) { showToast('⚠️ Enter a valid price', true); return; }
+  const { error } = await sb.from('settings').upsert({ id: 1, price_per_gallon: price });
   if (error) { showToast('❌ ' + error.message, true); return; }
-  settings = { startingCans: cans, pricePerGallon: price };
-  showToast('✅ Settings saved!');
+  settings.pricePerGallon = price;
+  showToast('✅ Price saved!');
   renderDashboard();
 }
 
@@ -399,7 +400,6 @@ async function renderAdminBuyers() {
   const el = document.getElementById('admin-buyers-list');
   if (buyers.length === 0) {
     el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
-    document.getElementById('admin-cans').value = settings.startingCans;
     document.getElementById('admin-price').value = settings.pricePerGallon;
     return;
   }
@@ -429,7 +429,6 @@ async function renderAdminBuyers() {
     </div>`;
   }).join('');
 
-  document.getElementById('admin-cans').value = settings.startingCans;
   document.getElementById('admin-price').value = settings.pricePerGallon;
 }
 
@@ -437,6 +436,13 @@ async function renderAdminBuyers() {
 function costPerCan() { return settings.pricePerGallon * 5; }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function selectCans(n) {
+  document.getElementById('log-cans').value = n;
+  document.querySelectorAll('.can-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i + 1 === n);
+  });
+}
+
 function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -454,7 +460,7 @@ function switchTab(id) {
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
-  if (id === 'log') { renderRecentEntries(); populateBuyerSelect(); }
+  if (id === 'log') { populateBuyerSelect(); }
   if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
 }
 
@@ -539,13 +545,12 @@ async function logUsage() {
   const name = document.getElementById('log-name').value.trim();
   const buyerId = document.getElementById('log-buyer').value;
   const cans = parseInt(document.getElementById('log-cans').value);
-  const date = document.getElementById('log-date').value;
-  const notes = document.getElementById('log-notes').value.trim();
+  const date = todayStr();
+  const notes = null;
 
   if (!name) { showToast('⚠️ Enter your name', true); return; }
   if (!buyerId) { showToast('⚠️ Select who supplied the gas', true); return; }
   if (!cans || cans < 1) { showToast('⚠️ Enter valid can count', true); return; }
-  if (!date) { showToast('⚠️ Select a date', true); return; }
 
   // Check how many cans this buyer has left (all time)
   const buyer = buyers.find(b => b.id == buyerId);
@@ -560,39 +565,17 @@ async function logUsage() {
   const btn = document.getElementById('log-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: date, notes: notes || null, paid: false, buyer_id: parseInt(buyerId) });
-  btn.disabled = false; btn.textContent = 'Log Usage';
+  btn.disabled = false; btn.textContent = 'Buy Gas';
   if (error) { showToast('❌ ' + error.message, true); return; }
 
   document.getElementById('log-name').value = '';
   document.getElementById('log-cans').value = '';
-  document.getElementById('log-notes').value = '';
-  showToast('✅ Usage logged!');
-  await populateBuyerSelect();   // refresh dropdown with updated remaining counts
-  renderRecentEntries();
+  document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
+  showToast('✅ Gas purchase logged!');
+  await populateBuyerSelect();
   renderDashboard();
 }
 
-async function renderRecentEntries() {
-  const el = document.getElementById('recent-entries');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
-  const { data: entries } = await sb.from('gas_entries').select('*').order('created_at', { ascending: false }).limit(20);
-  if (!entries || entries.length === 0) { el.innerHTML = '<div class="empty-state"><span>📋</span>No entries yet</div>'; return; }
-  el.innerHTML = entries.map(e => {
-    const buyer = buyers.find(b => b.id === e.buyer_id);
-    return `
-      <div class="log-item">
-        <div>
-          <div class="log-user">${e.user_name}</div>
-          <div class="log-detail">${fmtDate(e.entry_date)}${buyer ? ' · from ' + buyer.name : ''}${e.notes ? ' · ' + e.notes : ''}</div>
-        </div>
-        <div style="text-align:right">
-          <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
-          <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
-          ${e.paid ? '<div class="log-paid">✓ PAID</div>' : ''}
-        </div>
-      </div>`;
-  }).join('');
-}
 
 // ---- PAYMENTS ----
 // Groups: for each buyer, show who owes them and how much
@@ -688,15 +671,16 @@ async function renderQRCodes() {
     const url = appUrl + '?buyer=' + b.id;
 
     // Use Google Charts QR API — battle-tested, guaranteed scannable
-    const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=280x280&chl=' + encodeURIComponent(url) + '&choe=UTF-8&chld=M|2';
+    // Use qrserver.com - reliable, no CSP issues, works on all devices
+    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&ecc=M&data=' + encodeURIComponent(url);
 
     const div = document.createElement('div');
     div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
     div.innerHTML = `
-      <img src="${qrSrc}" width="240" height="240" style="display:block;margin:0 auto 8px;border-radius:4px;background:#fff;padding:6px" alt="QR for ${b.name}" />
+      <img src="${qrSrc}" width="160" height="160" style="display:block;margin:0 auto 8px;border-radius:4px;background:#fff;padding:4px" alt="QR for ${b.name}" onerror="this.parentNode.querySelector('.qr-err').style.display='block';this.style.display='none'" />
+      <div class="qr-err" style="display:none;color:#e74c3c;font-size:11px;margin-bottom:8px">Failed to load — check internet</div>
       <div class="qr-buyer-name">${b.name}</div>
       <div class="qr-cans">${depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining'}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
     `;
     el.appendChild(div);
   }
@@ -704,7 +688,6 @@ async function renderQRCodes() {
 
 
 function populateAdmin() {
-  document.getElementById('admin-cans').value = settings.startingCans;
   document.getElementById('admin-price').value = settings.pricePerGallon;
   renderAdminBuyers();
   populateBuyerSelect();
