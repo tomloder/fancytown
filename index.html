@@ -357,26 +357,18 @@ async function deleteBuyer(id) {
 }
 
 async function addCans(id, currentTotal) {
-  const n = parseInt(prompt('How many cans to add?'));
-  if (!n || n < 1) return;
-  const newTotal = currentTotal + n;
+  const newTotal = currentTotal + 1;
   const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
   if (error) { showToast('❌ ' + error.message, true); return; }
-  showToast('✅ ' + n + ' cans added!');
   await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
 }
 
 async function removeCans(id, currentTotal, usedSoFar) {
-  const n = parseInt(prompt('How many cans to remove?'));
-  if (!n || n < 1) return;
-  const newTotal = currentTotal - n;
-  if (newTotal < usedSoFar) {
-    showToast('⚠️ Can\'t go below cans already used (' + usedSoFar + ')', true); return;
-  }
+  const newTotal = currentTotal - 1;
+  if (newTotal < usedSoFar) { showToast('⚠️ Can\'t go below cans already used (' + usedSoFar + ')', true); return; }
   if (newTotal < 1) { showToast('⚠️ Must have at least 1 can', true); return; }
   const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
   if (error) { showToast('❌ ' + error.message, true); return; }
-  showToast('✅ ' + n + ' cans removed');
   await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
 }
 
