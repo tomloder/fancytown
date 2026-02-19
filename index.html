@@ -112,7 +112,7 @@
   .inline-row > div { flex: 1; }
 
   /* QR CODE PRINT */
-  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
   .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
   .qr-card canvas { border-radius: 8px; display: block; margin: 0 auto 8px; }
   .qr-buyer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
@@ -690,9 +690,9 @@ async function renderQRCodes() {
     div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
 
     const canvas = document.createElement('canvas');
-    canvas.width = 150;
-    canvas.height = 150;
-    canvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:6px';
+    canvas.width = 280;
+    canvas.height = 280;
+    canvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:4px;max-width:100%';
     div.appendChild(canvas);
 
     const nameEl = document.createElement('div');
@@ -725,9 +725,12 @@ async function renderQRCodes() {
 function drawQR(canvas, text) {
   const modules = makeQR(text);
   const size = modules.length;
-  const scale = Math.floor(canvas.width / (size + 4));
-  const offset = Math.floor((canvas.width - scale * size) / 2);
+  const quiet = 4; // required quiet zone in modules
+  const total = size + quiet * 2;
+  const scale = Math.floor(canvas.width / total);
+  const offset = quiet * scale;
   const ctx = canvas.getContext('2d');
+  // White background (quiet zone included)
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#000000';
