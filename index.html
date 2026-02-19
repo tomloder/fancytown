@@ -505,10 +505,8 @@ async function clearAll() {
   showToast('🗑️ All data cleared');
 }
 
-// Auto-connect if saved from previous visit
-const savedUrl = localStorage.getItem('sb_url');
-const savedKey = localStorage.getItem('sb_key');
-if (savedUrl && savedKey) connectSupabase(savedUrl, savedKey);
+// Auto-connect with hardcoded credentials — no setup screen needed
+connectSupabase('https://njvhuqhqorgheocpenlj.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmh1cWhxb3JnaGVvY3BlbmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTk1NTAsImV4cCI6MjA4NzA5NTU1MH0.Bgnl2AsMSfGAqZnZ0bIeN1-h58B8FHFAIm2rjDmrdZk');
 </script>
 </body>
 </html>
