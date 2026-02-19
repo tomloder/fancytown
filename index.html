@@ -5,180 +5,68 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>⛽ Gas Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase UMD bundle — exposes window.supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root {
-    --bg: #0d0d0d;
-    --surface: #161616;
-    --surface2: #1f1f1f;
-    --border: #2a2a2a;
-    --accent: #f5a623;
-    --accent2: #ff6b35;
-    --text: #f0f0f0;
-    --muted: #777;
-    --green: #2ecc71;
-    --red: #e74c3c;
+    --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
+    --border: #2a2a2a; --accent: #f5a623; --accent2: #ff6b35;
+    --text: #f0f0f0; --muted: #777; --green: #2ecc71; --red: #e74c3c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    max-width: 480px;
-    margin: 0 auto;
-  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
 
-  /* SETUP SCREEN */
-  #setup-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 30px 24px;
-    text-align: center;
-  }
-  #setup-screen h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 48px;
-    letter-spacing: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 8px;
-  }
-  #setup-screen p { color: var(--muted); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+  #setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 30px 24px; text-align: center; }
+  #setup-screen h1 { font-family: 'Bebas Neue', sans-serif; font-size: 48px; letter-spacing: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
   #setup-screen .card { width: 100%; text-align: left; }
-  #setup-screen .hint { font-size: 11px; color: var(--muted); margin-top: -10px; margin-bottom: 14px; }
+  #setup-error { color: var(--red); font-size: 13px; margin-bottom: 12px; line-height: 1.5; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: -10px; margin-bottom: 14px; }
 
-  /* HEADER */
-  header {
-    background: linear-gradient(135deg, #1a1000 0%, #0d0d0d 60%);
-    padding: 28px 20px 20px;
-    border-bottom: 1px solid var(--border);
-    position: relative;
-    overflow: hidden;
-  }
-  header::before {
-    content: '⛽';
-    position: absolute;
-    right: -10px; top: -10px;
-    font-size: 100px;
-    opacity: 0.08;
-  }
-  header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 38px;
-    letter-spacing: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1;
-  }
+  header { background: linear-gradient(135deg, #1a1000 0%, #0d0d0d 60%); padding: 28px 20px 20px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+  header::before { content: '⛽'; position: absolute; right: -10px; top: -10px; font-size: 100px; opacity: 0.08; }
+  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
   header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .live-dot {
-    display: inline-block;
-    width: 7px; height: 7px;
-    background: var(--green);
-    border-radius: 50%;
-    margin-right: 5px;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+  .live-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
 
-  /* TABS */
-  .tabs {
-    display: flex;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 10;
-  }
-  .tab {
-    flex: 1; padding: 14px 8px;
-    text-align: center; font-size: 12px;
-    font-weight: 600; letter-spacing: 0.5px;
-    text-transform: uppercase; color: var(--muted);
-    cursor: pointer; border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-  }
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .tab { flex: 1; padding: 14px 8px; text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  /* SECTIONS */
   .section { display: none; padding: 20px; }
   .section.active { display: block; }
 
-  /* CARDS */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px;
-    margin-bottom: 14px;
-  }
-  .card-title {
-    font-size: 11px; font-weight: 600;
-    letter-spacing: 1px; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 12px;
-  }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
 
-  /* STATS */
   .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .stat-card {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px; text-align: center;
-  }
+  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
   .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; line-height: 1; color: var(--accent); }
   .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-  /* PROGRESS */
   .progress-wrap { margin: 6px 0 10px; }
   .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
   .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.5s ease; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.5s; }
   .progress-fill.danger { background: linear-gradient(90deg, var(--accent2), var(--red)); }
 
-  /* INPUTS */
   label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.3px; }
-  input, select {
-    width: 100%; background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 10px;
-    color: var(--text); font-family: 'DM Sans', sans-serif;
-    font-size: 15px; padding: 12px 14px; margin-bottom: 14px;
-    outline: none; transition: border-color 0.2s;
-  }
-  input:focus, select:focus { border-color: var(--accent); }
+  input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 12px 14px; margin-bottom: 14px; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: var(--accent); }
   input[type=number] { -moz-appearance: textfield; }
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-  /* BUTTONS */
-  .btn {
-    display: block; width: 100%; padding: 14px;
-    border-radius: 12px; border: none;
-    font-family: 'DM Sans', sans-serif; font-size: 15px;
-    font-weight: 600; cursor: pointer; transition: all 0.2s;
-    letter-spacing: 0.3px; text-decoration: none; text-align: center;
-  }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; text-align: center; }
   .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; }
-  .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
   .btn-sm { display: inline-block; width: auto; padding: 8px 16px; font-size: 13px; border-radius: 8px; }
   .btn-venmo { background: #3d95ce; color: #fff; }
   .btn-apple { background: #000; color: #fff; border: 1px solid #333; }
-  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); margin-top: 8px; }
 
-  /* LOG ITEMS */
-  .log-item {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 14px 0; border-bottom: 1px solid var(--border);
-  }
+  .log-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .log-item:last-child { border-bottom: none; }
   .log-user { font-weight: 600; font-size: 15px; }
   .log-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
@@ -186,82 +74,54 @@
   .log-cost { font-size: 12px; color: var(--muted); }
   .log-paid { font-size: 11px; color: var(--green); font-weight: 600; }
 
-  /* PAYMENT */
   .payment-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
   .payment-row:last-child { border-bottom: none; }
   .payment-amount { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--accent2); line-height: 1; }
   .pay-btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
-  /* MISC */
   .price-display { display: flex; align-items: baseline; gap: 4px; }
   .price-big { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--accent); line-height: 1; }
   .price-unit { color: var(--muted); font-size: 13px; }
   .section-heading { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--accent); margin-bottom: 14px; }
   .empty-state { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
   .empty-state span { display: block; font-size: 36px; margin-bottom: 8px; }
-  .day-reset-btn { background: var(--surface2); border: 1px dashed var(--border); color: var(--muted); font-size: 13px; }
 
-  /* TOAST */
-  .toast {
-    position: fixed; bottom: 30px; left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--accent); color: #000; font-weight: 600;
-    font-size: 14px; padding: 12px 24px; border-radius: 99px;
-    transition: transform 0.3s ease; z-index: 100; white-space: nowrap;
-  }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: #000; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 99px; transition: transform 0.3s; z-index: 100; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--red); color: #fff; }
 
-  /* LOADING */
   .loading { text-align: center; color: var(--muted); padding: 20px; font-size: 13px; }
-  .spinner {
-    display: inline-block; width: 20px; height: 20px;
-    border: 2px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px;
-  }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .connection-bar {
-    background: var(--surface2);
-    padding: 6px 20px;
-    font-size: 11px;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .conn-bar { background: var(--surface2); padding: 6px 20px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
 </style>
 </head>
 <body>
 
-<!-- SETUP SCREEN (shown until Supabase is configured) -->
+<!-- SETUP SCREEN -->
 <div id="setup-screen">
   <div style="font-size:60px;margin-bottom:12px;">⛽</div>
   <h1>Gas Tracker</h1>
-  <p>Connect your Supabase database to get started.<br>Follow the setup guide that came with this file.</p>
+  <p class="sub">Connect your free Supabase database to sync<br>usage across all devices in real time.</p>
   <div class="card">
     <div class="card-title">Supabase Connection</div>
     <label>Project URL</label>
-    <input type="text" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" />
-    <label>Anon/Public API Key</label>
-    <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+    <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <label>Anon / Public API Key</label>
+    <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     <p class="hint">Found in Supabase → Project Settings → API</p>
-    <button class="btn btn-primary" onclick="connectSupabase()">Connect & Launch App</button>
+    <p id="setup-error"></p>
+    <button class="btn btn-primary" id="connect-btn" onclick="connectSupabase()">Connect &amp; Launch App</button>
   </div>
 </div>
 
-<!-- MAIN APP (hidden until connected) -->
+<!-- MAIN APP -->
 <div id="main-app" style="display:none">
   <header>
     <h1>Gas Tracker</h1>
     <p><span class="live-dot"></span>Live · shared across all devices</p>
   </header>
-
-  <div class="connection-bar" id="conn-bar">
-    <span class="spinner"></span> Connecting...
-  </div>
-
+  <div class="conn-bar" id="conn-bar"><span class="spinner"></span> Connecting...</div>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab" onclick="switchTab('log')">Log Use</div>
@@ -269,25 +129,15 @@
     <div class="tab" onclick="switchTab('admin')">Admin</div>
   </div>
 
-  <!-- DASHBOARD -->
   <div id="tab-dashboard" class="section active">
     <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-remaining">—</div>
-        <div class="stat-label">Cans Left</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-used">0</div>
-        <div class="stat-label">Cans Used</div>
-      </div>
+      <div class="stat-card"><div class="stat-value" id="stat-remaining">—</div><div class="stat-label">Cans Left</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-used">0</div><div class="stat-label">Cans Used</div></div>
     </div>
     <div class="card">
       <div class="card-title">Daily Inventory</div>
       <div class="progress-wrap">
-        <div class="progress-label">
-          <span id="progress-label-left">Loading...</span>
-          <span id="progress-label-right">0%</span>
-        </div>
+        <div class="progress-label"><span id="progress-label-left">Loading...</span><span id="progress-label-right">0%</span></div>
         <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
       </div>
       <div class="price-display" style="margin-top:10px;">
@@ -302,7 +152,6 @@
     </div>
   </div>
 
-  <!-- LOG USAGE -->
   <div id="tab-log" class="section">
     <div class="section-heading">Log Gas Usage</div>
     <div class="card">
@@ -322,20 +171,13 @@
     </div>
   </div>
 
-  <!-- PAYMENTS -->
   <div id="tab-pay" class="section">
     <div class="section-heading">What's Owed</div>
-    <div class="card" style="border-color: rgba(245,166,35,0.3);">
+    <div class="card" style="border-color:rgba(245,166,35,0.3)">
       <div class="card-title">Payment Info</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-size:12px;color:var(--muted);">Gas Buyer</div>
-          <div style="font-weight:600;font-size:16px;" id="pay-buyer-name">Not set</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:12px;color:var(--muted);">Venmo</div>
-          <div style="font-weight:600;font-size:14px;color:#3d95ce;" id="pay-venmo-handle">Not set</div>
-        </div>
+        <div><div style="font-size:12px;color:var(--muted)">Gas Buyer</div><div style="font-weight:600;font-size:16px" id="pay-buyer-name">Not set</div></div>
+        <div style="text-align:right"><div style="font-size:12px;color:var(--muted)">Venmo</div><div style="font-weight:600;font-size:14px;color:#3d95ce" id="pay-venmo-handle">Not set</div></div>
       </div>
     </div>
     <div class="card">
@@ -344,7 +186,6 @@
     </div>
   </div>
 
-  <!-- ADMIN -->
   <div id="tab-admin" class="section">
     <div class="section-heading">Admin Settings</div>
     <div class="card">
@@ -367,11 +208,11 @@
     </div>
     <div class="card">
       <div class="card-title">Danger Zone</div>
-      <button class="btn btn-outline day-reset-btn" onclick="resetDay()">🔄 Reset Today's Usage</button>
-      <button class="btn btn-outline btn-danger" style="margin-top:8px;" onclick="clearAll()">🗑️ Clear All Data</button>
+      <button class="btn btn-outline" style="color:var(--muted);border-style:dashed" onclick="resetDay()">🔄 Reset Today's Usage</button>
+      <button class="btn btn-danger" onclick="clearAll()">🗑️ Clear All Data</button>
     </div>
     <div class="card">
-      <div class="card-title">Database</div>
+      <div class="card-title">Connection</div>
       <button class="btn btn-outline" onclick="disconnectSupabase()">🔌 Change Supabase Connection</button>
     </div>
   </div>
@@ -380,42 +221,66 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ---- SUPABASE ----
-let supabase = null;
+// sb = our supabase client instance
+// window.supabase = the library loaded from the CDN script tag above
+let sb = null;
 let settings = { startingCans: 10, pricePerGallon: 3.50, buyerName: '', venmoHandle: '', buyerPhone: '' };
 let realtimeSub = null;
 
-function getSavedCreds() {
-  return {
-    url: localStorage.getItem('sb_url'),
-    key: localStorage.getItem('sb_key')
-  };
+function setSetupError(msg) {
+  document.getElementById('setup-error').textContent = msg;
 }
 
-async function connectSupabase(urlOverride, keyOverride) {
-  const url = urlOverride || document.getElementById('setup-url')?.value.trim();
-  const key = keyOverride || document.getElementById('setup-key')?.value.trim();
-  if (!url || !key) { showToast('⚠️ Enter URL and key', true); return; }
+async function connectSupabase(savedUrl, savedKey) {
+  const url = (savedUrl || document.getElementById('setup-url').value).trim();
+  const key = (savedKey || document.getElementById('setup-key').value).trim();
+
+  if (!url || !key) { setSetupError('Please enter both the Project URL and API key.'); return; }
+  if (!url.startsWith('https://')) { setSetupError('URL must start with https://'); return; }
+
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  setSetupError('');
 
   try {
-    supabase = window.supabase.createClient(url, key);
-    // Test connection
-    const { error } = await supabase.from('settings').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') throw error;
+    // The UMD bundle puts createClient on window.supabase
+    sb = window.supabase.createClient(url, key);
+
+    // Test — PGRST116 means "no rows" which is fine, the table just exists & is empty
+    const { error } = await sb.from('settings').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') throw new Error(error.message);
+
     localStorage.setItem('sb_url', url);
     localStorage.setItem('sb_key', key);
     launchApp();
-  } catch(e) {
-    showToast('❌ Connection failed — check URL/key', true);
+
+  } catch (e) {
     console.error(e);
+    let msg = 'Connection failed. ';
+    if (!e.message) {
+      msg += 'Check your URL and key.';
+    } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      msg += 'Cannot reach Supabase — double-check the Project URL.';
+    } else if (e.message.toLowerCase().includes('api key') || e.message.includes('401')) {
+      msg += 'Invalid API key — use the anon/public key from Project Settings → API.';
+    } else if (e.message.includes('does not exist') || e.message.includes('relation')) {
+      msg += 'Tables not found. Did you run the SQL in Step 2 of the setup guide?';
+    } else {
+      msg += e.message;
+    }
+    setSetupError(msg);
+    btn.disabled = false;
+    btn.textContent = 'Connect & Launch App';
   }
 }
 
 function disconnectSupabase() {
-  if (!confirm('Disconnect from Supabase?')) return;
-  if (realtimeSub) supabase.removeChannel(realtimeSub);
+  if (!confirm('Disconnect and re-enter credentials?')) return;
+  if (realtimeSub && sb) sb.removeChannel(realtimeSub);
   localStorage.removeItem('sb_url');
   localStorage.removeItem('sb_key');
+  sb = null;
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'flex';
 }
@@ -427,42 +292,30 @@ function launchApp() {
   loadSettings();
   renderDashboard();
   subscribeRealtime();
-  updateConnBar(true);
 }
 
-function updateConnBar(connected) {
-  const bar = document.getElementById('conn-bar');
-  if (connected) {
-    bar.innerHTML = '<span class="live-dot"></span> Live — changes sync to all devices instantly';
-  } else {
-    bar.innerHTML = '<span class="spinner"></span> Reconnecting...';
-  }
-}
-
-// ---- REALTIME ----
 function subscribeRealtime() {
-  realtimeSub = supabase
-    .channel('gas_entries_changes')
+  realtimeSub = sb.channel('gas_tracker')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => {
       renderDashboard();
       renderRecentEntries();
       renderPayments();
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
-      loadSettings();
-    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
     .subscribe((status) => {
-      updateConnBar(status === 'SUBSCRIBED');
+      const bar = document.getElementById('conn-bar');
+      bar.innerHTML = status === 'SUBSCRIBED'
+        ? '<span class="live-dot"></span> Live — changes sync to all devices instantly'
+        : '<span class="spinner"></span> ' + status + '…';
     });
 }
 
-// ---- SETTINGS ----
 async function loadSettings() {
-  const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
+  const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
   if (data) {
     settings = {
-      startingCans: data.starting_cans,
-      pricePerGallon: data.price_per_gallon,
+      startingCans: data.starting_cans || 10,
+      pricePerGallon: parseFloat(data.price_per_gallon) || 3.50,
       buyerName: data.buyer_name || '',
       venmoHandle: data.venmo_handle || '',
       buyerPhone: data.buyer_phone || ''
@@ -475,46 +328,39 @@ async function saveSettings() {
   const cans = parseInt(document.getElementById('admin-cans').value);
   const price = parseFloat(document.getElementById('admin-price').value);
   if (!cans || cans < 1 || isNaN(price) || price < 0) { showToast('⚠️ Check values', true); return; }
-  const { error } = await supabase.from('settings').upsert({
-    id: 1, starting_cans: cans, price_per_gallon: price,
-    buyer_name: settings.buyerName, venmo_handle: settings.venmoHandle, buyer_phone: settings.buyerPhone
-  });
-  if (error) { showToast('❌ Save failed', true); return; }
+  const { error } = await sb.from('settings').upsert({ id: 1, starting_cans: cans, price_per_gallon: price, buyer_name: settings.buyerName, venmo_handle: settings.venmoHandle, buyer_phone: settings.buyerPhone });
+  if (error) { showToast('❌ ' + error.message, true); return; }
   showToast('✅ Settings saved!');
   loadSettings();
 }
 
 async function saveBuyerInfo() {
   const buyerName = document.getElementById('admin-buyer-name').value.trim();
-  const venmo = document.getElementById('admin-venmo').value.trim().replace('@','');
+  const venmo = document.getElementById('admin-venmo').value.trim().replace('@', '');
   const phone = document.getElementById('admin-phone').value.trim();
-  const { error } = await supabase.from('settings').upsert({
-    id: 1, starting_cans: settings.startingCans, price_per_gallon: settings.pricePerGallon,
-    buyer_name: buyerName, venmo_handle: venmo, buyer_phone: phone
-  });
-  if (error) { showToast('❌ Save failed', true); return; }
+  const { error } = await sb.from('settings').upsert({ id: 1, starting_cans: settings.startingCans, price_per_gallon: settings.pricePerGallon, buyer_name: buyerName, venmo_handle: venmo, buyer_phone: phone });
+  if (error) { showToast('❌ ' + error.message, true); return; }
   showToast('✅ Buyer info saved!');
   loadSettings();
 }
 
-// ---- HELPERS ----
 function costPerCan() { return settings.pricePerGallon * 5; }
-function todayStr() { return new Date().toISOString().slice(0,10); }
-function fmtDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function fmtDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
-function showToast(msg, isError=false) {
+function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (isError ? ' error' : '');
-  setTimeout(() => t.className = 'toast', 2500);
+  setTimeout(() => t.className = 'toast', 2800);
 }
 
-// ---- TABS ----
 function switchTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  const tabs = ['dashboard','log','pay','admin'];
-  document.querySelectorAll('.tab')[tabs.indexOf(id)].classList.add('active');
+  ['dashboard', 'log', 'pay', 'admin'].forEach((name, i) => {
+    if (name === id) document.querySelectorAll('.tab')[i].classList.add('active');
+  });
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
@@ -522,37 +368,28 @@ function switchTab(id) {
   if (id === 'admin') populateAdmin();
 }
 
-// ---- DASHBOARD ----
 async function renderDashboard() {
-  const { data: entries } = await supabase
-    .from('gas_entries')
-    .select('*')
-    .eq('entry_date', todayStr());
-
-  const usedCans = (entries || []).reduce((s,e) => s + e.cans, 0);
+  if (!sb) return;
+  const { data: entries } = await sb.from('gas_entries').select('*').eq('entry_date', todayStr());
+  const usedCans = (entries || []).reduce((s, e) => s + e.cans, 0);
   const remaining = Math.max(0, settings.startingCans - usedCans);
   const pct = settings.startingCans > 0 ? (usedCans / settings.startingCans) * 100 : 0;
-
   document.getElementById('stat-remaining').textContent = remaining;
   document.getElementById('stat-used').textContent = usedCans;
   document.getElementById('progress-label-left').textContent = `${usedCans} of ${settings.startingCans} cans used`;
   document.getElementById('progress-label-right').textContent = Math.round(pct) + '%';
   const fill = document.getElementById('progress-fill');
-  fill.style.width = Math.min(pct,100) + '%';
+  fill.style.width = Math.min(pct, 100) + '%';
   fill.className = 'progress-fill' + (pct >= 80 ? ' danger' : '');
   document.getElementById('dash-price').textContent = '$' + settings.pricePerGallon.toFixed(2);
   document.getElementById('dash-cost-per-can').textContent = '$' + costPerCan().toFixed(2);
-
   const logEl = document.getElementById('dash-log');
   if (!entries || entries.length === 0) {
     logEl.innerHTML = '<div class="empty-state"><span>⛽</span>No usage logged yet today</div>';
   } else {
     logEl.innerHTML = entries.map(e => `
       <div class="log-item">
-        <div>
-          <div class="log-user">${e.user_name}</div>
-          <div class="log-detail">${e.notes || 'No notes'}</div>
-        </div>
+        <div><div class="log-user">${e.user_name}</div><div class="log-detail">${e.notes || 'No notes'}</div></div>
         <div style="text-align:right">
           <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
           <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
@@ -562,62 +399,38 @@ async function renderDashboard() {
   }
 }
 
-// ---- LOG USAGE ----
 async function logUsage() {
   const name = document.getElementById('log-name').value.trim();
   const cans = parseInt(document.getElementById('log-cans').value);
   const date = document.getElementById('log-date').value;
   const notes = document.getElementById('log-notes').value.trim();
-
   if (!name) { showToast('⚠️ Enter your name', true); return; }
   if (!cans || cans < 1) { showToast('⚠️ Enter valid can count', true); return; }
   if (!date) { showToast('⚠️ Select a date', true); return; }
-
-  // Check availability
-  const { data: todayEntries } = await supabase.from('gas_entries').select('cans').eq('entry_date', date);
-  const usedToday = (todayEntries || []).reduce((s,e) => s + e.cans, 0);
-  if (usedToday + cans > settings.startingCans) {
-    showToast(`⚠️ Only ${settings.startingCans - usedToday} cans left!`, true);
-    return;
-  }
-
+  const { data: todayEntries } = await sb.from('gas_entries').select('cans').eq('entry_date', date);
+  const usedToday = (todayEntries || []).reduce((s, e) => s + e.cans, 0);
+  if (usedToday + cans > settings.startingCans) { showToast(`⚠️ Only ${settings.startingCans - usedToday} cans left!`, true); return; }
   const btn = document.getElementById('log-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-
-  const { error } = await supabase.from('gas_entries').insert({
-    user_name: name, cans, entry_date: date, notes: notes || null, paid: false
-  });
-
-  btn.disabled = false;
-  btn.textContent = 'Log Usage';
-
-  if (error) { showToast('❌ Failed to save', true); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: date, notes: notes || null, paid: false });
+  btn.disabled = false; btn.textContent = 'Log Usage';
+  if (error) { showToast('❌ ' + error.message, true); return; }
   document.getElementById('log-name').value = '';
   document.getElementById('log-cans').value = '';
   document.getElementById('log-notes').value = '';
   showToast('✅ Usage logged!');
   renderRecentEntries();
+  renderDashboard();
 }
 
 async function renderRecentEntries() {
   const el = document.getElementById('recent-entries');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
-  const { data: entries } = await supabase
-    .from('gas_entries').select('*')
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  if (!entries || entries.length === 0) {
-    el.innerHTML = '<div class="empty-state"><span>📋</span>No entries yet</div>';
-    return;
-  }
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
+  const { data: entries } = await sb.from('gas_entries').select('*').order('created_at', { ascending: false }).limit(20);
+  if (!entries || entries.length === 0) { el.innerHTML = '<div class="empty-state"><span>📋</span>No entries yet</div>'; return; }
   el.innerHTML = entries.map(e => `
     <div class="log-item">
-      <div>
-        <div class="log-user">${e.user_name}</div>
-        <div class="log-detail">${fmtDate(e.entry_date)}${e.notes ? ' · ' + e.notes : ''}</div>
-      </div>
+      <div><div class="log-user">${e.user_name}</div><div class="log-detail">${fmtDate(e.entry_date)}${e.notes ? ' · ' + e.notes : ''}</div></div>
       <div style="text-align:right">
         <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
         <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
@@ -626,68 +439,47 @@ async function renderRecentEntries() {
     </div>`).join('');
 }
 
-// ---- PAYMENTS ----
 async function renderPayments() {
   document.getElementById('pay-buyer-name').textContent = settings.buyerName || 'Not set';
   document.getElementById('pay-venmo-handle').textContent = settings.venmoHandle ? '@' + settings.venmoHandle : 'Not set';
-
   const el = document.getElementById('payment-list');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
-
-  const { data: unpaid } = await supabase.from('gas_entries').select('*').eq('paid', false);
-
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
+  const { data: unpaid } = await sb.from('gas_entries').select('*').eq('paid', false);
   const byUser = {};
   (unpaid || []).forEach(e => {
     if (!byUser[e.user_name]) byUser[e.user_name] = { cans: 0, cost: 0 };
     byUser[e.user_name].cans += e.cans;
     byUser[e.user_name].cost += e.cans * costPerCan();
   });
-
   const users = Object.keys(byUser);
-  if (users.length === 0) {
-    el.innerHTML = '<div class="empty-state"><span>✅</span>All paid up!</div>';
-    return;
-  }
-
+  if (users.length === 0) { el.innerHTML = '<div class="empty-state"><span>✅</span>All paid up!</div>'; return; }
   el.innerHTML = users.map(name => {
     const { cans, cost } = byUser[name];
-    const venmoNote = encodeURIComponent(`Gas - ${cans} can${cans !== 1 ? 's' : ''}`);
-    const venmoLink = settings.venmoHandle
-      ? `https://venmo.com/${settings.venmoHandle}?txn=pay&amount=${cost.toFixed(2)}&note=${venmoNote}`
-      : null;
-    const appleLink = settings.buyerPhone
-      ? `sms:${settings.buyerPhone}&body=Sending $${cost.toFixed(2)} for gas (${cans} cans) — via Apple Pay`
-      : null;
-
+    const note = encodeURIComponent(`Gas - ${cans} can${cans !== 1 ? 's' : ''}`);
+    const venmoLink = settings.venmoHandle ? `https://venmo.com/${settings.venmoHandle}?txn=pay&amount=${cost.toFixed(2)}&note=${note}` : null;
+    const appleLink = settings.buyerPhone ? `sms:${settings.buyerPhone}&body=${encodeURIComponent(`Sending $${cost.toFixed(2)} for gas (${cans} cans) — via Apple Pay`)}` : null;
     return `
       <div class="payment-row">
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px">
           <div class="payment-amount">$${cost.toFixed(2)}</div>
-          <div>
-            <div style="font-weight:600;font-size:15px;">${name}</div>
-            <div style="font-size:12px;color:var(--muted)">${cans} can${cans !== 1 ? 's' : ''} · ${cans*5} gal</div>
-          </div>
+          <div><div style="font-weight:600;font-size:15px">${name}</div><div style="font-size:12px;color:var(--muted)">${cans} can${cans !== 1 ? 's' : ''} · ${cans * 5} gal</div></div>
         </div>
         <div class="pay-btns">
           ${venmoLink ? `<a href="${venmoLink}" target="_blank" class="btn btn-sm btn-venmo">💙 Venmo</a>` : ''}
           ${appleLink ? `<a href="${appleLink}" class="btn btn-sm btn-apple"> Apple Pay</a>` : ''}
-          <button class="btn btn-sm btn-outline" onclick="markPaid('${name}')">✓ Mark Paid</button>
+          <button class="btn btn-sm btn-outline" onclick="markPaid('${name.replace(/'/g, "\\'")}')">✓ Mark Paid</button>
         </div>
       </div>`;
   }).join('');
 }
 
 async function markPaid(name) {
-  const { error } = await supabase.from('gas_entries')
-    .update({ paid: true })
-    .eq('user_name', name)
-    .eq('paid', false);
-  if (error) { showToast('❌ Failed to update', true); return; }
+  const { error } = await sb.from('gas_entries').update({ paid: true }).eq('user_name', name).eq('paid', false);
+  if (error) { showToast('❌ ' + error.message, true); return; }
   showToast(`✅ ${name} marked as paid`);
   renderPayments();
 }
 
-// ---- ADMIN ----
 function populateAdmin() {
   document.getElementById('admin-cans').value = settings.startingCans;
   document.getElementById('admin-price').value = settings.pricePerGallon;
@@ -697,27 +489,26 @@ function populateAdmin() {
 }
 
 async function resetDay() {
-  if (!confirm("Delete all of today's entries from the database?")) return;
-  const { error } = await supabase.from('gas_entries').delete().eq('entry_date', todayStr());
-  if (error) { showToast('❌ Reset failed', true); return; }
+  if (!confirm("Delete all of today's entries?")) return;
+  const { error } = await sb.from('gas_entries').delete().eq('entry_date', todayStr());
+  if (error) { showToast('❌ ' + error.message, true); return; }
   renderDashboard();
   showToast('🔄 Today reset');
 }
 
 async function clearAll() {
   if (!confirm('Delete ALL entries permanently? This cannot be undone.')) return;
-  const { error } = await supabase.from('gas_entries').delete().neq('id', 0);
-  if (error) { showToast('❌ Clear failed', true); return; }
+  const { error } = await sb.from('gas_entries').delete().gte('id', 0);
+  if (error) { showToast('❌ ' + error.message, true); return; }
   renderDashboard();
   renderRecentEntries();
   showToast('🗑️ All data cleared');
 }
 
-// ---- INIT ----
-const creds = getSavedCreds();
-if (creds.url && creds.key) {
-  connectSupabase(creds.url, creds.key);
-}
+// Auto-connect if saved from previous visit
+const savedUrl = localStorage.getItem('sb_url');
+const savedKey = localStorage.getItem('sb_key');
+if (savedUrl && savedKey) connectSupabase(savedUrl, savedKey);
 </script>
 </body>
 </html>
