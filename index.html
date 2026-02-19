@@ -6,6 +6,7 @@
 <title>⛽ Gas Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   :root {
     --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
@@ -110,6 +111,26 @@
   .add-buyer-form input { margin-bottom: 10px; }
   .inline-row { display: flex; gap: 10px; }
   .inline-row > div { flex: 1; }
+
+  /* QR CODE PRINT */
+  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .qr-card canvas { border-radius: 8px; display: block; margin: 0 auto 8px; }
+  .qr-buyer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .qr-cans { font-size: 11px; color: var(--muted); }
+  .qr-depleted { opacity: 0.4; }
+
+  @media print {
+    body { background: white; max-width: none; }
+    header, .tabs, .conn-bar, #tab-dashboard, #tab-log, #tab-pay { display: none !important; }
+    #tab-admin .card:not(.qr-print-card) { display: none !important; }
+    .qr-print-card { border: none !important; }
+    .section-heading, .btn, hr { display: none !important; }
+    .qr-card { background: white; border: 2px solid #ddd; break-inside: avoid; }
+    .qr-buyer-name { color: black; }
+    .qr-cans { color: #666; }
+    .section { display: block !important; }
+  }
 </style>
 </head>
 <body>
@@ -220,6 +241,13 @@
       <button class="btn btn-primary" onclick="addBuyer()">Add Buyer</button>
     </div>
 
+
+    <div class="card qr-print-card">
+      <div class="card-title">QR Codes for Gas Cans</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Each QR code links directly to the log form with that buyer pre-selected. Print and stick on the gas cans.</p>
+      <div id="qr-grid" class="qr-grid"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+      <button class="btn btn-outline" style="margin-top:12px" onclick="window.print()">🖨️ Print QR Codes</button>
+    </div>
     <div class="card">
       <div class="card-title">Danger Zone</div>
       <button class="btn btn-outline" style="color:var(--muted);border-style:dashed" onclick="resetDay()">🔄 Reset Today's Usage</button>
@@ -246,6 +274,28 @@ async function init() {
   await Promise.all([loadSettings(), loadBuyers()]);
   renderDashboard();
   subscribeRealtime();
+  checkURLParams();
+}
+
+function checkURLParams() {
+  const params = new URLSearchParams(window.location.search);
+  const buyerId = params.get('buyer');
+  if (buyerId) {
+    // Jump to log tab with buyer pre-selected
+    switchTab('log');
+    // Wait for populateBuyerSelect to finish then set value
+    setTimeout(() => {
+      const sel = document.getElementById('log-buyer');
+      sel.value = buyerId;
+      // Show a helpful banner
+      const buyer = buyers.find(b => String(b.id) === String(buyerId));
+      if (buyer) {
+        showToast('⛽ Logging from ' + buyer.name + '\'s can');
+        // Scroll to name field
+        document.getElementById('log-name').focus();
+      }
+    }, 300);
+  }
 }
 
 function subscribeRealtime() {
@@ -321,40 +371,65 @@ async function deleteBuyer(id) {
   renderDashboard();
 }
 
-function populateBuyerSelect() {
+async function populateBuyerSelect() {
   const sel = document.getElementById('log-buyer');
   const current = sel.value;
   sel.innerHTML = '<option value="">— Select buyer —</option>';
+
+  // Check total cans used per buyer across all entries
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
   buyers.forEach(b => {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = b.cans_bought - used;
+    if (remaining <= 0) return; // fully used up — hide from dropdown
     const opt = document.createElement('option');
     opt.value = b.id;
-    opt.textContent = `${b.name} (${b.cans_bought} can${b.cans_bought !== 1 ? 's' : ''})`;
+    opt.textContent = `${b.name} (${remaining} can${remaining !== 1 ? 's' : ''} left)`;
     sel.appendChild(opt);
   });
+
   if (current) sel.value = current;
 }
 
-function renderAdminBuyers() {
+async function renderAdminBuyers() {
   const el = document.getElementById('admin-buyers-list');
   if (buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>👤</span>No buyers added yet</div>';
+    el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
+    document.getElementById('admin-cans').value = settings.startingCans;
+    document.getElementById('admin-price').value = settings.pricePerGallon;
     return;
   }
-  el.innerHTML = buyers.map(b => `
+
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  el.innerHTML = buyers.map(b => {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = Math.max(0, b.cans_bought - used);
+    const depleted = remaining === 0;
+    return `
     <div class="buyer-item">
-      <div>
-        <div class="buyer-name">${b.name}</div>
-        <div class="buyer-meta">
-          ${b.cans_bought} can${b.cans_bought !== 1 ? 's' : ''} · $${(b.cans_bought * costPerCan()).toFixed(2)}
-          ${b.venmo_handle ? ' · @' + b.venmo_handle : ''}
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--muted)">(depleted)</span>' : ''}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining}/${b.cans_bought}</div>
+            <button class="btn-icon" onclick="deleteBuyer(${b.id})">&#10005;</button>
+          </div>
         </div>
+        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} spent${b.venmo_handle ? ' &middot; @' + b.venmo_handle : ''}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="buyer-cans">${b.cans_bought}</div>
-        <button class="btn-icon" onclick="deleteBuyer(${b.id})">✕</button>
-      </div>
-    </div>`).join('');
-  // Also populate the admin settings fields
+    </div>`;
+  }).join('');
+
   document.getElementById('admin-cans').value = settings.startingCans;
   document.getElementById('admin-price').value = settings.pricePerGallon;
 }
@@ -405,19 +480,36 @@ async function renderDashboard() {
   document.getElementById('dash-price').textContent = '$' + settings.pricePerGallon.toFixed(2);
   document.getElementById('dash-cost-per-can').textContent = '$' + costPerCan().toFixed(2);
 
-  // Buyers breakdown
+  // Buyers breakdown — show remaining per buyer
+  const { data: allUsageEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allUsageEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
   const buyersEl = document.getElementById('dash-buyers');
   if (buyers.length === 0) {
-    buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>👤</span>No buyers added yet — go to Admin</div>';
+    buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>&#128100;</span>No buyers added yet — go to Admin</div>';
   } else {
-    buyersEl.innerHTML = buyers.map(b => `
-      <div class="buyer-item">
-        <div>
-          <div class="buyer-name">${b.name}</div>
-          <div class="buyer-meta">${b.cans_bought} can${b.cans_bought !== 1 ? 's' : ''} · $${(b.cans_bought * costPerCan()).toFixed(2)} spent</div>
-        </div>
-        <div class="buyer-cans">${b.cans_bought}</div>
-      </div>`).join('');
+    buyersEl.innerHTML = buyers.map(b => {
+      const used = usedPerBuyer[b.id] || 0;
+      const remaining = Math.max(0, b.cans_bought - used);
+      const pctUsed = b.cans_bought > 0 ? (used / b.cans_bought) * 100 : 0;
+      const depleted = remaining === 0;
+      return `
+        <div class="buyer-item">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
+              <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining} left</div>
+            </div>
+            <div class="buyer-meta">${used}/${b.cans_bought} used &middot; $${(b.cans_bought * costPerCan()).toFixed(2)} spent</div>
+            <div style="height:4px;background:var(--border);border-radius:99px;margin-top:6px;overflow:hidden">
+              <div style="height:100%;width:${Math.min(pctUsed,100)}%;background:${depleted ? 'var(--muted)' : 'linear-gradient(90deg,var(--accent),var(--accent2))'};border-radius:99px"></div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   // Today's usage log
@@ -456,12 +548,13 @@ async function logUsage() {
   if (!cans || cans < 1) { showToast('⚠️ Enter valid can count', true); return; }
   if (!date) { showToast('⚠️ Select a date', true); return; }
 
-  // Check how many cans this specific buyer has left
+  // Check how many cans this buyer has left (all time)
   const buyer = buyers.find(b => b.id == buyerId);
-  const { data: buyerEntries } = await sb.from('gas_entries').select('cans').eq('buyer_id', buyerId).eq('entry_date', date);
+  const { data: buyerEntries } = await sb.from('gas_entries').select('cans').eq('buyer_id', buyerId);
   const usedFromBuyer = (buyerEntries || []).reduce((s, e) => s + e.cans, 0);
-  if (usedFromBuyer + cans > buyer.cans_bought) {
-    showToast(`⚠️ ${buyer.name} only has ${buyer.cans_bought - usedFromBuyer} can${buyer.cans_bought - usedFromBuyer !== 1 ? 's' : ''} left!`, true);
+  const remainingFromBuyer = buyer.cans_bought - usedFromBuyer;
+  if (cans > remainingFromBuyer) {
+    showToast(`⚠️ ${buyer.name} only has ${remainingFromBuyer} can${remainingFromBuyer !== 1 ? 's' : ''} left!`, true);
     return;
   }
 
@@ -570,11 +663,65 @@ async function markPaid(userName, buyerId) {
 }
 
 // ---- ADMIN ----
+async function renderQRCodes() {
+  const el = document.getElementById('qr-grid');
+  if (!el) return;
+  if (buyers.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet</p>';
+    return;
+  }
+
+  // Get remaining cans per buyer
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  const appUrl = window.location.href.split('?')[0];
+  el.innerHTML = '';
+
+  for (const b of buyers) {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = Math.max(0, b.cans_bought - used);
+    const depleted = remaining === 0;
+
+    const div = document.createElement('div');
+    div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
+
+    const canvas = document.createElement('canvas');
+    div.appendChild(canvas);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'qr-buyer-name';
+    nameEl.textContent = b.name;
+    div.appendChild(nameEl);
+
+    const cansEl = document.createElement('div');
+    cansEl.className = 'qr-cans';
+    cansEl.textContent = depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining';
+    div.appendChild(cansEl);
+
+    el.appendChild(div);
+
+    const url = appUrl + '?buyer=' + b.id;
+    try {
+      await QRCode.toCanvas(canvas, url, {
+        width: 130,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+    } catch(e) { console.error('QR error:', e); }
+  }
+}
+
+
 function populateAdmin() {
   document.getElementById('admin-cans').value = settings.startingCans;
   document.getElementById('admin-price').value = settings.pricePerGallon;
   renderAdminBuyers();
   populateBuyerSelect();
+  renderQRCodes();
 }
 
 async function resetDay() {
