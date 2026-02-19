@@ -455,7 +455,7 @@ function switchTab(id) {
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
   if (id === 'log') renderRecentEntries();
-  if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); }
+  if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
 }
 
 // ---- DASHBOARD ----
@@ -706,7 +706,18 @@ async function renderQRCodes() {
     div.appendChild(cansEl);
 
     el.appendChild(div);
-    drawQR(canvas, url);
+
+    // Draw after element is in DOM, catch any errors visibly
+    try {
+      drawQR(canvas, url);
+    } catch(e) {
+      console.error('QR draw error for ' + b.name + ':', e);
+      canvas.style.display = 'none';
+      const errEl = document.createElement('p');
+      errEl.style.cssText = 'color:#e74c3c;font-size:11px;margin-bottom:8px';
+      errEl.textContent = 'Error: ' + e.message;
+      div.insertBefore(errEl, nameEl);
+    }
   }
 }
 
