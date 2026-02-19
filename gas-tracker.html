@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>⛽ Gas Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
+</script><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
+    --border: #2a2a2a; --accent: #f5a623; --accent2: #ff6b35;
+    --text: #f0f0f0; --muted: #777; --green: #2ecc71; --red: #e74c3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+  header { background: linear-gradient(135deg, #1a1000 0%, #0d0d0d 60%); padding: 28px 20px 20px; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+  header::before { content: '⛽'; position: absolute; right: -10px; top: -10px; font-size: 100px; opacity: 0.08; }
+  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
+  header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .tab { flex: 1; padding: 14px 4px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .section { display: none; padding: 20px; }
+  .section.active { display: block; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; line-height: 1; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .progress-wrap { margin: 6px 0 10px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.5s; }
+  .progress-fill.danger { background: linear-gradient(90deg, var(--accent2), var(--red)); }
+
+  label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.3px; }
+  input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 12px 14px; margin-bottom: 14px; outline: none; transition: border-color 0.2s; appearance: none; -webkit-appearance: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23777' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  select option { background: #1f1f1f; color: #f0f0f0; }
+
+  .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; text-align: center; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
+  .btn-sm { display: inline-block; width: auto; padding: 8px 14px; font-size: 12px; border-radius: 8px; }
+  .btn-venmo { background: #3d95ce; color: #fff; }
+  .btn-apple { background: #000; color: #fff; border: 1px solid #333; }
+  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); margin-top: 8px; }
+  .btn-icon { background: transparent; border: 1px solid var(--border); color: var(--red); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+
+  .log-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .log-item:last-child { border-bottom: none; }
+  .log-user { font-weight: 600; font-size: 15px; }
+  .log-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .log-cans { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); line-height: 1; }
+  .log-cost { font-size: 12px; color: var(--muted); }
+  .log-paid { font-size: 11px; color: var(--green); font-weight: 600; }
+
+  /* BUYER CARDS in admin */
+  .buyer-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .buyer-item:last-child { border-bottom: none; }
+  .buyer-name { font-weight: 600; font-size: 15px; }
+  .buyer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .buyer-cans { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); }
+
+  /* PAYMENT SECTION */
+  .buyer-section { margin-bottom: 18px; }
+  .buyer-section-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
+  .buyer-section-name { font-weight: 700; font-size: 16px; }
+  .buyer-section-sub { font-size: 12px; color: var(--muted); }
+  .buyer-total { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--accent2); }
+  .ower-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .ower-row:last-child { border-bottom: none; }
+  .ower-name { font-size: 14px; font-weight: 500; }
+  .ower-amount { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--accent); margin-right: 8px; }
+  .pay-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+  .price-display { display: flex; align-items: baseline; gap: 4px; }
+  .price-big { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--accent); line-height: 1; }
+  .price-unit { color: var(--muted); font-size: 13px; }
+  .section-heading { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--accent); margin-bottom: 14px; }
+  .empty-state { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
+  .empty-state span { display: block; font-size: 36px; margin-bottom: 8px; }
+
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: #000; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 99px; transition: transform 0.3s; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--red); color: #fff; }
+
+  .loading { text-align: center; color: var(--muted); padding: 20px; font-size: 13px; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .conn-bar { background: var(--surface2); padding: 6px 20px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .add-buyer-form { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .add-buyer-form label { margin-top: 8px; }
+  .add-buyer-form input { margin-bottom: 10px; }
+  .inline-row { display: flex; gap: 10px; }
+  .inline-row > div { flex: 1; }
+
+  /* QR CODE PRINT */
+  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
+  .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .qr-card canvas { border-radius: 8px; display: block; margin: 0 auto 8px; }
+  .qr-buyer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .qr-cans { font-size: 11px; color: var(--muted); }
+  .qr-depleted { opacity: 0.4; }
+
+  @media print {
+    body { background: white; max-width: none; }
+    header, .tabs, .conn-bar, #tab-dashboard, #tab-log, #tab-pay { display: none !important; }
+    #tab-admin .card:not(.qr-print-card) { display: none !important; }
+    .qr-print-card { border: none !important; }
+    .section-heading, .btn, hr { display: none !important; }
+    .qr-card { background: white; border: 2px solid #ddd; break-inside: avoid; }
+    .qr-buyer-name { color: black; }
+    .qr-cans { color: #666; }
+    .section { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="main-app" style="display:none">
+  <header>
+    <h1>Gas Tracker</h1>
+    <p><span class="live-dot"></span>Live · shared across all devices</p>
+  </header>
+  <div class="conn-bar" id="conn-bar"><span class="spinner"></span> Connecting...</div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+    <div class="tab" onclick="switchTab('log')">Log Use</div>
+    <div class="tab" onclick="switchTab('pay')">Payments</div>
+    <div class="tab" onclick="switchTab('admin')">Admin</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="section active">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value" id="stat-remaining">—</div><div class="stat-label">Cans Left</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-used">0</div><div class="stat-label">Cans Used</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Daily Inventory</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="progress-label-left">Loading...</span><span id="progress-label-right">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      </div>
+      <div class="price-display" style="margin-top:10px;">
+        <div class="price-big" id="dash-price">$—</div>
+        <div class="price-unit">per gallon · 5 gal/can</div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">Cost per can: <strong style="color:var(--text)" id="dash-cost-per-can">$—</strong></p>
+    </div>
+    <div class="card">
+      <div class="card-title">Gas Supply — Who Bought What</div>
+      <div id="dash-buyers"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Today's Usage — Live 🔴</div>
+      <div id="dash-log"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- LOG USAGE -->
+  <div id="tab-log" class="section">
+    <div class="section-heading">Log Gas Usage</div>
+    <div class="card">
+      <label>Your Name</label>
+      <input type="text" id="log-name" placeholder="e.g. Mike" />
+      <label>Who Supplied the Gas?</label>
+      <select id="log-buyer">
+        <option value="">— Select buyer —</option>
+      </select>
+      <label>Number of Cans Used</label>
+      <input type="number" id="log-cans" placeholder="1" min="1" step="1" />
+      <label>Date</label>
+      <input type="date" id="log-date" />
+      <label>Notes (optional)</label>
+      <input type="text" id="log-notes" placeholder="e.g. generator, lawn mower..." />
+      <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Log Usage</button>
+    </div>
+    <div class="card">
+      <div class="card-title">All Recent Entries (Everyone)</div>
+      <div id="recent-entries"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- PAYMENTS -->
+  <div id="tab-pay" class="section">
+    <div class="section-heading">What's Owed</div>
+    <div id="payment-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="tab-admin" class="section">
+    <div class="section-heading">Admin Settings</div>
+
+    <div class="card">
+      <div class="card-title">Daily Setup</div>
+      <label>Starting Cans Per Day</label>
+      <input type="number" id="admin-cans" placeholder="10" min="1" />
+      <label>Price Per Gallon ($)</label>
+      <input type="number" id="admin-price" placeholder="3.50" step="0.01" min="0" />
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Gas Buyers</div>
+      <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+      <hr class="divider">
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;">ADD NEW BUYER</div>
+      <label>Name</label>
+      <input type="text" id="new-buyer-name" placeholder="e.g. John" />
+      <div class="inline-row">
+        <div>
+          <label>Cans Bought</label>
+          <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
+        </div>
+        <div>
+          <label>Venmo Handle</label>
+          <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
+        </div>
+      </div>
+      <label>Phone (Apple Pay, optional)</label>
+      <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
+      <button class="btn btn-primary" onclick="addBuyer()">Add Buyer</button>
+    </div>
+
+
+    <div class="card qr-print-card">
+      <div class="card-title">QR Codes for Gas Cans</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Each QR code links directly to the log form with that buyer pre-selected. Print and stick on the gas cans.</p>
+      <div id="qr-grid" class="qr-grid"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+      <button class="btn btn-outline" style="margin-top:12px" onclick="window.print()">🖨️ Print QR Codes</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Danger Zone</div>
+      <button class="btn btn-outline" style="color:var(--muted);border-style:dashed" onclick="resetDay()">🔄 Reset Today's Usage</button>
+      <button class="btn btn-danger" onclick="clearAll()">🗑️ Clear All Usage Data</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://njvhuqhqorgheocpenlj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmh1cWhxb3JnaGVvY3BlbmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTk1NTAsImV4cCI6MjA4NzA5NTU1MH0.Bgnl2AsMSfGAqZnZ0bIeN1-h58B8FHFAIm2rjDmrdZk';
+
+let sb = null;
+let settings = { startingCans: 10, pricePerGallon: 3.50 };
+let buyers = []; // array of { id, name, cans_bought, venmo_handle, phone }
+
+// ---- INIT ----
+async function init() {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('log-date').value = todayStr();
+  await Promise.all([loadSettings(), loadBuyers()]);
+  renderDashboard();
+  subscribeRealtime();
+  checkURLParams();
+}
+
+function checkURLParams() {
+  const params = new URLSearchParams(window.location.search);
+  const buyerId = params.get('buyer');
+  if (buyerId) {
+    // Jump to log tab with buyer pre-selected
+    switchTab('log');
+    // Wait for populateBuyerSelect to finish then set value
+    setTimeout(() => {
+      const sel = document.getElementById('log-buyer');
+      sel.value = buyerId;
+      // Show a helpful banner
+      const buyer = buyers.find(b => String(b.id) === String(buyerId));
+      if (buyer) {
+        showToast('⛽ Logging from ' + buyer.name + '\'s can');
+        // Scroll to name field
+        document.getElementById('log-name').focus();
+      }
+    }, 300);
+  }
+}
+
+function subscribeRealtime() {
+  sb.channel('gas_tracker')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => {
+      renderDashboard(); renderRecentEntries(); renderPayments(); populateBuyerSelect();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
+      loadBuyers().then(() => { renderDashboard(); renderAdminBuyers(); populateBuyerSelect(); renderPayments(); });
+    })
+    .subscribe((status) => {
+      const bar = document.getElementById('conn-bar');
+      bar.innerHTML = status === 'SUBSCRIBED'
+        ? '<span class="live-dot"></span> Live — changes sync to all devices instantly'
+        : '<span class="spinner"></span> ' + status + '…';
+    });
+}
+
+// ---- SETTINGS ----
+async function loadSettings() {
+  const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
+  if (data) {
+    settings = { startingCans: data.starting_cans || 10, pricePerGallon: parseFloat(data.price_per_gallon) || 3.50 };
+  }
+}
+
+async function saveSettings() {
+  const cans = parseInt(document.getElementById('admin-cans').value);
+  const price = parseFloat(document.getElementById('admin-price').value);
+  if (!cans || cans < 1 || isNaN(price) || price < 0) { showToast('⚠️ Check values', true); return; }
+  const { error } = await sb.from('settings').upsert({ id: 1, starting_cans: cans, price_per_gallon: price });
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  settings = { startingCans: cans, pricePerGallon: price };
+  showToast('✅ Settings saved!');
+  renderDashboard();
+}
+
+// ---- BUYERS ----
+async function loadBuyers() {
+  const { data } = await sb.from('gas_buyers').select('*').order('created_at', { ascending: true });
+  buyers = data || [];
+}
+
+async function addBuyer() {
+  const name = document.getElementById('new-buyer-name').value.trim();
+  const cans = parseInt(document.getElementById('new-buyer-cans').value);
+  const venmo = document.getElementById('new-buyer-venmo').value.trim().replace('@', '');
+  const phone = document.getElementById('new-buyer-phone').value.trim();
+  if (!name) { showToast('⚠️ Enter buyer name', true); return; }
+  if (!cans || cans < 1) { showToast('⚠️ Enter cans bought', true); return; }
+  const { error } = await sb.from('gas_buyers').insert({ name, cans_bought: cans, venmo_handle: venmo || null, phone: phone || null });
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  document.getElementById('new-buyer-name').value = '';
+  document.getElementById('new-buyer-cans').value = '';
+  document.getElementById('new-buyer-venmo').value = '';
+  document.getElementById('new-buyer-phone').value = '';
+  showToast('✅ Buyer added!');
+  await loadBuyers();
+  renderAdminBuyers();
+  await populateBuyerSelect();
+  renderDashboard();
+}
+
+async function deleteBuyer(id) {
+  if (!confirm('Remove this buyer?')) return;
+  const { error } = await sb.from('gas_buyers').delete().eq('id', id);
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  showToast('🗑️ Buyer removed');
+  await loadBuyers();
+  renderAdminBuyers();
+  await populateBuyerSelect();
+  renderDashboard();
+}
+
+async function populateBuyerSelect() {
+  const sel = document.getElementById('log-buyer');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select buyer —</option>';
+
+  // Check total cans used per buyer across all entries
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  buyers.forEach(b => {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = b.cans_bought - used;
+    if (remaining <= 0) return; // fully used up — hide from dropdown
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = `${b.name} (${remaining} can${remaining !== 1 ? 's' : ''} left)`;
+    sel.appendChild(opt);
+  });
+
+  if (current) sel.value = current;
+}
+
+async function renderQRCodes() {
+  const el = document.getElementById('qr-grid');
+  if (!el) return;
+  if (buyers.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
+    return;
+  }
+  const { data: allEntries } = await sb.from('gasentries').select('buyerid, cans');
+  const usedPerBuyer = {};
+  allEntries.forEach(e => {
+    usedPerBuyer[e.buyerid] = (usedPerBuyer[e.buyerid] || 0) + e.cans;
+  });
+  const appUrl = window.location.href.split('?')[0];
+  el.innerHTML = ''; // Clear loading
+  for (const b of buyers) {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = Math.max(0, b.cansbought - used);
+    const depleted = remaining === 0;
+    const url = `${appUrl}?buyer=${b.id}`;
+    const div = document.createElement('div');
+    div.className = `qr-card ${depleted ? 'qr-depleted' : ''}`;
+    // Generate QR canvas client-side
+    const qrCanvas = document.createElement('canvas');
+    qrCanvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:8px;background:#fff;padding:6px;';
+    try {
+      await QRCode.toCanvas(qrCanvas, url, { width: 240, margin: 1, color: { dark: '#000000', light: '#FFFFFF' } });
+    } catch (err) {
+      qrCanvas.style.display = 'none'; // Hide on error
+      console.error('QR generation failed:', err);
+    }
+    div.appendChild(qrCanvas);
+    div.innerHTML += `
+      <div class="qr-buyer-name">${b.name}</div>
+      <div class="qr-cans">${depleted ? 'Depleted' : `${remaining} can${remaining !== 1 ? 's' : ''} remaining`}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
+    `;
+    el.appendChild(div);
+  }
+}
+
+
+// ---- HELPERS ----
+function costPerCan() { return settings.pricePerGallon * 5; }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function fmtDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ---- TABS ----
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  ['dashboard', 'log', 'pay', 'admin'].forEach((name, i) => {
+    if (name === id) document.querySelectorAll('.tab')[i].classList.add('active');
+  });
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'pay') renderPayments();
+  if (id === 'log') { renderRecentEntries(); populateBuyerSelect(); }
+  if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
+}
+
+// ---- DASHBOARD ----
+async function renderDashboard() {
+  if (!sb) return;
+  const { data: entries } = await sb.from('gas_entries').select('*').eq('entry_date', todayStr());
+
+  // Total cans available = sum of all buyers' cans
+  const totalCans = buyers.reduce((s, b) => s + b.cans_bought, 0);
+  const usedCans = (entries || []).reduce((s, e) => s + e.cans, 0);
+  const remaining = Math.max(0, totalCans - usedCans);
+  const pct = totalCans > 0 ? (usedCans / totalCans) * 100 : 0;
+
+  document.getElementById('stat-remaining').textContent = remaining;
+  document.getElementById('stat-used').textContent = usedCans;
+  document.getElementById('progress-label-left').textContent = `${usedCans} of ${totalCans} cans used`;
+  document.getElementById('progress-label-right').textContent = Math.round(pct) + '%';
+  const fill = document.getElementById('progress-fill');
+  fill.style.width = Math.min(pct, 100) + '%';
+  fill.className = 'progress-fill' + (pct >= 80 ? ' danger' : '');
+  document.getElementById('dash-price').textContent = '$' + settings.pricePerGallon.toFixed(2);
+  document.getElementById('dash-cost-per-can').textContent = '$' + costPerCan().toFixed(2);
+
+  // Buyers breakdown — show remaining per buyer
+  const { data: allUsageEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allUsageEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  const buyersEl = document.getElementById('dash-buyers');
+  if (buyers.length === 0) {
+    buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>&#128100;</span>No buyers added yet — go to Admin</div>';
+  } else {
+    buyersEl.innerHTML = buyers.map(b => {
+      const used = usedPerBuyer[b.id] || 0;
+      const remaining = Math.max(0, b.cans_bought - used);
+      const pctUsed = b.cans_bought > 0 ? (used / b.cans_bought) * 100 : 0;
+      const depleted = remaining === 0;
+      return `
+        <div class="buyer-item">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
+              <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining} left</div>
+            </div>
+            <div class="buyer-meta">${used}/${b.cans_bought} used &middot; $${(b.cans_bought * costPerCan()).toFixed(2)} spent</div>
+            <div style="height:4px;background:var(--border);border-radius:99px;margin-top:6px;overflow:hidden">
+              <div style="height:100%;width:${Math.min(pctUsed,100)}%;background:${depleted ? 'var(--muted)' : 'linear-gradient(90deg,var(--accent),var(--accent2))'};border-radius:99px"></div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Today's usage log
+  const logEl = document.getElementById('dash-log');
+  if (!entries || entries.length === 0) {
+    logEl.innerHTML = '<div class="empty-state"><span>⛽</span>No usage logged yet today</div>';
+  } else {
+    logEl.innerHTML = entries.map(e => {
+      const buyer = buyers.find(b => b.id === e.buyer_id);
+      return `
+        <div class="log-item">
+          <div>
+            <div class="log-user">${e.user_name}</div>
+            <div class="log-detail">${buyer ? '→ ' + buyer.name : ''}${e.notes ? ' · ' + e.notes : ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
+            <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
+            ${e.paid ? '<div class="log-paid">✓ PAID</div>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ---- LOG USAGE ----
+async function logUsage() {
+  const name = document.getElementById('log-name').value.trim();
+  const buyerId = document.getElementById('log-buyer').value;
+  const cans = parseInt(document.getElementById('log-cans').value);
+  const date = document.getElementById('log-date').value;
+  const notes = document.getElementById('log-notes').value.trim();
+
+  if (!name) { showToast('⚠️ Enter your name', true); return; }
+  if (!buyerId) { showToast('⚠️ Select who supplied the gas', true); return; }
+  if (!cans || cans < 1) { showToast('⚠️ Enter valid can count', true); return; }
+  if (!date) { showToast('⚠️ Select a date', true); return; }
+
+  // Check how many cans this buyer has left (all time)
+  const buyer = buyers.find(b => b.id == buyerId);
+  const { data: buyerEntries } = await sb.from('gas_entries').select('cans').eq('buyer_id', buyerId);
+  const usedFromBuyer = (buyerEntries || []).reduce((s, e) => s + e.cans, 0);
+  const remainingFromBuyer = buyer.cans_bought - usedFromBuyer;
+  if (cans > remainingFromBuyer) {
+    showToast(`⚠️ ${buyer.name} only has ${remainingFromBuyer} can${remainingFromBuyer !== 1 ? 's' : ''} left!`, true);
+    return;
+  }
+
+  const btn = document.getElementById('log-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: date, notes: notes || null, paid: false, buyer_id: parseInt(buyerId) });
+  btn.disabled = false; btn.textContent = 'Log Usage';
+  if (error) { showToast('❌ ' + error.message, true); return; }
+
+  document.getElementById('log-name').value = '';
+  document.getElementById('log-cans').value = '';
+  document.getElementById('log-notes').value = '';
+  showToast('✅ Usage logged!');
+  await populateBuyerSelect();   // refresh dropdown with updated remaining counts
+  renderRecentEntries();
+  renderDashboard();
+}
+
+async function renderRecentEntries() {
+  const el = document.getElementById('recent-entries');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
+  const { data: entries } = await sb.from('gas_entries').select('*').order('created_at', { ascending: false }).limit(20);
+  if (!entries || entries.length === 0) { el.innerHTML = '<div class="empty-state"><span>📋</span>No entries yet</div>'; return; }
+  el.innerHTML = entries.map(e => {
+    const buyer = buyers.find(b => b.id === e.buyer_id);
+    return `
+      <div class="log-item">
+        <div>
+          <div class="log-user">${e.user_name}</div>
+          <div class="log-detail">${fmtDate(e.entry_date)}${buyer ? ' · from ' + buyer.name : ''}${e.notes ? ' · ' + e.notes : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
+          <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
+          ${e.paid ? '<div class="log-paid">✓ PAID</div>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ---- PAYMENTS ----
+// Groups: for each buyer, show who owes them and how much
+async function renderPayments() {
+  const el = document.getElementById('payment-list');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
+
+  const { data: unpaid } = await sb.from('gas_entries').select('*').eq('paid', false);
+  if (!unpaid || unpaid.length === 0 || buyers.length === 0) {
+    el.innerHTML = '<div class="empty-state"><span>✅</span>All paid up!</div>';
+    return;
+  }
+
+  // Group by buyer_id → then by user_name
+  const byBuyer = {};
+  unpaid.forEach(e => {
+    if (!byBuyer[e.buyer_id]) byBuyer[e.buyer_id] = {};
+    if (!byBuyer[e.buyer_id][e.user_name]) byBuyer[e.buyer_id][e.user_name] = { cans: 0, cost: 0 };
+    byBuyer[e.buyer_id][e.user_name].cans += e.cans;
+    byBuyer[e.buyer_id][e.user_name].cost += e.cans * costPerCan();
+  });
+
+  let html = '';
+  buyers.forEach(buyer => {
+    const owers = byBuyer[buyer.id];
+    if (!owers) return;
+    const totalOwed = Object.values(owers).reduce((s, v) => s + v.cost, 0);
+    const venmoBase = buyer.venmo_handle ? `https://venmo.com/${buyer.venmo_handle}?txn=pay` : null;
+
+    html += `<div class="card buyer-section">
+      <div class="buyer-section-header">
+        <div>
+          <div class="buyer-section-name">💰 Pay ${buyer.name}</div>
+          <div class="buyer-section-sub">${buyer.venmo_handle ? '@' + buyer.venmo_handle : 'No Venmo set'}</div>
+        </div>
+        <div class="buyer-total">$${totalOwed.toFixed(2)}</div>
+      </div>`;
+
+    Object.entries(owers).forEach(([userName, { cans, cost }]) => {
+      const note = encodeURIComponent(`Gas - ${cans} can${cans !== 1 ? 's' : ''}`);
+      const venmoLink = venmoBase ? `${venmoBase}&amount=${cost.toFixed(2)}&note=${note}` : null;
+      const appleLink = buyer.phone ? `sms:${buyer.phone}&body=${encodeURIComponent(`Sending $${cost.toFixed(2)} for gas (${cans} cans) — Apple Pay`)}` : null;
+      html += `
+        <div class="ower-row">
+          <div>
+            <div class="ower-name">${userName}</div>
+            <div style="font-size:12px;color:var(--muted)">${cans} can${cans !== 1 ? 's' : ''} · ${cans * 5} gal</div>
+            <div class="pay-btns">
+              ${venmoLink ? `<a href="${venmoLink}" target="_blank" class="btn btn-sm btn-venmo">💙 Venmo</a>` : ''}
+              ${appleLink ? `<a href="${appleLink}" class="btn btn-sm btn-apple"> Apple Pay</a>` : ''}
+              <button class="btn btn-sm btn-outline" onclick="markPaid('${userName.replace(/'/g,"\\'")}', ${buyer.id})">✓ Mark Paid</button>
+            </div>
+          </div>
+          <div class="ower-amount">$${cost.toFixed(2)}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+
+  el.innerHTML = html || '<div class="empty-state"><span>✅</span>All paid up!</div>';
+}
+
+async function markPaid(userName, buyerId) {
+  const { error } = await sb.from('gas_entries').update({ paid: true }).eq('user_name', userName).eq('buyer_id', buyerId).eq('paid', false);
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  showToast(`✅ ${userName} marked as paid`);
+  renderPayments();
+}
+
+// ---- ADMIN ----
+async function renderQRCodes() {
+  const el = document.getElementById('qr-grid');
+  if (!el) return;
+
+  if (buyers.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
+    return;
+  }
+
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  const appUrl = window.location.href.split('?')[0];
+  el.innerHTML = '';
+
+  for (const b of buyers) {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = Math.max(0, b.cans_bought - used);
+    const depleted = remaining === 0;
+    const url = appUrl + '?buyer=' + b.id;
+
+    // Use Google Charts QR API — battle-tested, guaranteed scannable
+    const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=280x280&chl=' + encodeURIComponent(url) + '&choe=UTF-8&chld=M|2';
+
+    const div = document.createElement('div');
+    div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
+    div.innerHTML = `
+      <img src="${qrSrc}" width="240" height="240" style="display:block;margin:0 auto 8px;border-radius:4px;background:#fff;padding:6px" alt="QR for ${b.name}" />
+      <div class="qr-buyer-name">${b.name}</div>
+      <div class="qr-cans">${depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
+    `;
+    el.appendChild(div);
+  }
+}
+
+
+function populateAdmin() {
+  document.getElementById('admin-cans').value = settings.startingCans;
+  document.getElementById('admin-price').value = settings.pricePerGallon;
+  renderAdminBuyers();
+  populateBuyerSelect();
+  renderQRCodes();
+}
+
+async function resetDay() {
+  if (!confirm("Delete all of today's entries?")) return;
+  const { error } = await sb.from('gas_entries').delete().eq('entry_date', todayStr());
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  renderDashboard();
+  showToast('🔄 Today reset');
+}
+
+async function clearAll() {
+  if (!confirm('Delete ALL entries permanently? This cannot be undone.')) return;
+  const { error } = await sb.from('gas_entries').delete().gte('id', 0);
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  renderDashboard();
+  renderRecentEntries();
+  showToast('🗑️ All data cleared');
+}
+
+// ---- START ----
+init();
+</script>
+</body>
+</html>
