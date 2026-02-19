@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>⛽ Gas Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
+</script><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
 <style>
   :root {
     --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
@@ -300,7 +302,7 @@ function checkURLParams() {
 function subscribeRealtime() {
   sb.channel('gas_tracker')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => {
-      renderDashboard(); renderRecentEntries(); renderPayments();
+      renderDashboard(); renderRecentEntries(); renderPayments(); populateBuyerSelect();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
@@ -355,7 +357,7 @@ async function addBuyer() {
   showToast('✅ Buyer added!');
   await loadBuyers();
   renderAdminBuyers();
-  populateBuyerSelect();
+  await populateBuyerSelect();
   renderDashboard();
 }
 
@@ -366,7 +368,7 @@ async function deleteBuyer(id) {
   showToast('🗑️ Buyer removed');
   await loadBuyers();
   renderAdminBuyers();
-  populateBuyerSelect();
+  await populateBuyerSelect();
   renderDashboard();
 }
 
@@ -395,43 +397,46 @@ async function populateBuyerSelect() {
   if (current) sel.value = current;
 }
 
-async function renderAdminBuyers() {
-  const el = document.getElementById('admin-buyers-list');
+async function renderQRCodes() {
+  const el = document.getElementById('qr-grid');
+  if (!el) return;
   if (buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
-    document.getElementById('admin-cans').value = settings.startingCans;
-    document.getElementById('admin-price').value = settings.pricePerGallon;
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
     return;
   }
-
-  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const { data: allEntries } = await sb.from('gasentries').select('buyerid, cans');
   const usedPerBuyer = {};
-  (allEntries || []).forEach(e => {
-    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  allEntries.forEach(e => {
+    usedPerBuyer[e.buyerid] = (usedPerBuyer[e.buyerid] || 0) + e.cans;
   });
-
-  el.innerHTML = buyers.map(b => {
+  const appUrl = window.location.href.split('?')[0];
+  el.innerHTML = ''; // Clear loading
+  for (const b of buyers) {
     const used = usedPerBuyer[b.id] || 0;
-    const remaining = Math.max(0, b.cans_bought - used);
+    const remaining = Math.max(0, b.cansbought - used);
     const depleted = remaining === 0;
-    return `
-    <div class="buyer-item">
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--muted)">(depleted)</span>' : ''}</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining}/${b.cans_bought}</div>
-            <button class="btn-icon" onclick="deleteBuyer(${b.id})">&#10005;</button>
-          </div>
-        </div>
-        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} spent${b.venmo_handle ? ' &middot; @' + b.venmo_handle : ''}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('admin-cans').value = settings.startingCans;
-  document.getElementById('admin-price').value = settings.pricePerGallon;
+    const url = `${appUrl}?buyer=${b.id}`;
+    const div = document.createElement('div');
+    div.className = `qr-card ${depleted ? 'qr-depleted' : ''}`;
+    // Generate QR canvas client-side
+    const qrCanvas = document.createElement('canvas');
+    qrCanvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:8px;background:#fff;padding:6px;';
+    try {
+      await QRCode.toCanvas(qrCanvas, url, { width: 240, margin: 1, color: { dark: '#000000', light: '#FFFFFF' } });
+    } catch (err) {
+      qrCanvas.style.display = 'none'; // Hide on error
+      console.error('QR generation failed:', err);
+    }
+    div.appendChild(qrCanvas);
+    div.innerHTML += `
+      <div class="qr-buyer-name">${b.name}</div>
+      <div class="qr-cans">${depleted ? 'Depleted' : `${remaining} can${remaining !== 1 ? 's' : ''} remaining`}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
+    `;
+    el.appendChild(div);
+  }
 }
+
 
 // ---- HELPERS ----
 function costPerCan() { return settings.pricePerGallon * 5; }
@@ -454,7 +459,7 @@ function switchTab(id) {
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
-  if (id === 'log') renderRecentEntries();
+  if (id === 'log') { renderRecentEntries(); populateBuyerSelect(); }
   if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
 }
 
@@ -567,6 +572,7 @@ async function logUsage() {
   document.getElementById('log-cans').value = '';
   document.getElementById('log-notes').value = '';
   showToast('✅ Usage logged!');
+  await populateBuyerSelect();   // refresh dropdown with updated remaining counts
   renderRecentEntries();
   renderDashboard();
 }
@@ -686,178 +692,19 @@ async function renderQRCodes() {
     const depleted = remaining === 0;
     const url = appUrl + '?buyer=' + b.id;
 
+    // Use Google Charts QR API — battle-tested, guaranteed scannable
+    const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=280x280&chl=' + encodeURIComponent(url) + '&choe=UTF-8&chld=M|2';
+
     const div = document.createElement('div');
     div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 280;
-    canvas.height = 280;
-    canvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:4px;max-width:100%';
-    div.appendChild(canvas);
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'qr-buyer-name';
-    nameEl.textContent = b.name;
-    div.appendChild(nameEl);
-
-    const cansEl = document.createElement('div');
-    cansEl.className = 'qr-cans';
-    cansEl.textContent = depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining';
-    div.appendChild(cansEl);
-
+    div.innerHTML = `
+      <img src="${qrSrc}" width="240" height="240" style="display:block;margin:0 auto 8px;border-radius:4px;background:#fff;padding:6px" alt="QR for ${b.name}" />
+      <div class="qr-buyer-name">${b.name}</div>
+      <div class="qr-cans">${depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
+    `;
     el.appendChild(div);
-
-    // Draw after element is in DOM, catch any errors visibly
-    try {
-      drawQR(canvas, url);
-    } catch(e) {
-      console.error('QR draw error for ' + b.name + ':', e);
-      canvas.style.display = 'none';
-      const errEl = document.createElement('p');
-      errEl.style.cssText = 'color:#e74c3c;font-size:11px;margin-bottom:8px';
-      errEl.textContent = 'Error: ' + e.message;
-      div.insertBefore(errEl, nameEl);
-    }
   }
-}
-
-// ---- INLINE QR CODE ENGINE (no CDN, no network needed) ----
-function drawQR(canvas, text) {
-  const modules = makeQR(text);
-  const size = modules.length;
-  const quiet = 4; // required quiet zone in modules
-  const total = size + quiet * 2;
-  const scale = Math.floor(canvas.width / total);
-  const offset = quiet * scale;
-  const ctx = canvas.getContext('2d');
-  // White background (quiet zone included)
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000000';
-  for (let r = 0; r < size; r++)
-    for (let c = 0; c < size; c++)
-      if (modules[r][c] === 1)
-        ctx.fillRect(offset + c * scale, offset + r * scale, scale, scale);
-}
-
-function makeQR(text) {
-  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
-  let x = 1;
-  for (let i = 0; i < 255; i++) { EXP[i]=x; LOG[x]=i; x=x<<1; if(x&0x100)x^=0x11d; }
-  for (let i = 255; i < 512; i++) EXP[i] = EXP[i-255];
-  const gmul = (a,b) => a&&b ? EXP[LOG[a]+LOG[b]] : 0;
-
-  function rsGen(n) {
-    let g=[1];
-    for(let i=0;i<n;i++){const ng=new Array(g.length+1).fill(0);for(let j=0;j<g.length;j++){ng[j]^=g[j];ng[j+1]^=gmul(g[j],EXP[i]);}g=ng;}
-    return g;
-  }
-  function rsEnc(data,n){
-    const gen=rsGen(n),rem=new Array(n).fill(0);
-    for(const b of data){const f=b^rem.shift();rem.push(0);for(let i=0;i<n;i++)rem[i]^=gmul(f,gen[i]);}
-    return rem;
-  }
-
-  // Version capacity byte mode ECC-M
-  const VCAP=[0,16,28,44,64,86,108,124,154,182,216,254];
-  // [ecPerBlock, b1, d1, b2, d2]
-  const ECI={1:[10,1,16,0,0],2:[16,1,28,0,0],3:[26,1,44,0,0],4:[18,2,32,0,0],5:[24,2,43,0,0],6:[16,4,27,0,0],7:[18,4,31,0,0],8:[22,2,38,2,39],9:[22,3,36,2,37],10:[26,4,43,1,44]};
-
-  const bytes=[];
-  for(let i=0;i<text.length;i++){const c=text.charCodeAt(i);if(c<128)bytes.push(c);else if(c<2048){bytes.push(0xC0|(c>>6));bytes.push(0x80|(c&63));}else{bytes.push(0xE0|(c>>12));bytes.push(0x80|((c>>6)&63));bytes.push(0x80|(c&63));}}
-
-  let ver=1;
-  while(ver<=10&&VCAP[ver]<bytes.length+3)ver++;
-  if(ver>10)throw new Error('Too long');
-
-  const [ecpb,b1,d1,b2,d2]=ECI[ver];
-  const td=b1*d1+b2*d2;
-  const bits=[];
-  const pb=(v,l)=>{for(let i=l-1;i>=0;i--)bits.push((v>>i)&1);};
-  pb(4,4);pb(bytes.length,ver<10?8:16);bytes.forEach(b=>pb(b,8));
-  if(bits.length<td*8)pb(0,Math.min(4,td*8-bits.length));
-  while(bits.length%8)bits.push(0);
-  let pi=0;while(bits.length<td*8)pb([0xEC,0x11][pi++%2],8);
-
-  const db=[];for(let i=0;i<bits.length;i+=8){let b=0;for(let j=0;j<8;j++)b=(b<<1)|(bits[i+j]||0);db.push(b);}
-
-  const blocks=[];let off=0;
-  for(let i=0;i<b1;i++){blocks.push({d:db.slice(off,off+d1)});off+=d1;}
-  for(let i=0;i<b2;i++){blocks.push({d:db.slice(off,off+d2)});off+=d2;}
-  blocks.forEach(bl=>bl.e=rsEnc(bl.d,ecpb));
-
-  const final=[];
-  const mxd=Math.max(...blocks.map(b=>b.d.length));
-  for(let i=0;i<mxd;i++)blocks.forEach(b=>{if(i<b.d.length)final.push(b.d[i]);});
-  blocks.forEach(b=>b.e.forEach(e=>final.push(e)));
-
-  const N=ver*4+17;
-  const mat=Array.from({length:N},()=>new Array(N).fill(-1));
-  const fn=Array.from({length:N},()=>new Array(N).fill(false));
-  const sf=(r,c,v)=>{if(r>=0&&r<N&&c>=0&&c<N){mat[r][c]=v?1:0;fn[r][c]=true;}};
-
-  const finder=(tr,tc)=>{for(let r=-1;r<=7;r++)for(let c=-1;c<=7;c++){if(tr+r<0||tr+r>=N||tc+c<0||tc+c>=N)continue;sf(tr+r,tc+c,(r>=0&&r<=6&&(c===0||c===6))||(c>=0&&c<=6&&(r===0||r===6))||(r>=2&&r<=4&&c>=2&&c<=4));}};
-  finder(0,0);finder(N-7,0);finder(0,N-7);
-
-  if(ver>=2){const AP={2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],7:[6,22,38]};const ap=AP[ver]||[];for(const r of ap)for(const c of ap){if(!fn[r][c])for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++)sf(r+dr,c+dc,Math.max(Math.abs(dr),Math.abs(dc))!==1);}}
-
-  for(let i=8;i<N-8;i++){sf(6,i,i%2===0);sf(i,6,i%2===0);}
-  sf(N-8,8,true);
-  // Format info area placeholders (skip col 6 = timing, skip row 6 = timing)
-  for(let i=0;i<6;i++){sf(8,i,false);sf(i,8,false);}  // cols/rows 0-5
-  sf(8,7,false); sf(7,8,false);                         // separators
-  sf(8,8,false);                                         // corner
-  // second copy placeholders
-  for(let i=0;i<8;i++){sf(8,N-1-i,false);sf(N-1-i,8,false);}
-
-  let idx=0;
-  for(let right=N-1;right>=1;right-=2){
-    if(right===6)right=5;
-    const up=((N-1-right)/2)%2===0;
-    for(let vert=0;vert<N;vert++){
-      const row=up?N-1-vert:vert;
-      for(let d=0;d<2;d++){
-        const col=right-d;
-        if(!fn[row][col]){
-          const bit=idx<final.length*8?(final[Math.floor(idx/8)]>>(7-idx%8))&1:0;
-          mat[row][col]=bit^((row+col)%2===0?1:0);
-          idx++;
-        }
-      }
-    }
-  }
-
-  // Format info: ECC=M(01) + mask=0(000)
-  // Computed: data=0b01000, remainder via gen poly 0x537, XOR mask 0b101010000010010
-  // Result: 111011111000100 (bits 14..0)
-  const FMT=[1,1,1,0,1,1,1,1,1,0,0,0,1,0,0];
-
-  // Place around top-left finder:
-  // Row 8: cols 0,1,2,3,4,5 = FMT[0..5]; col 7 = FMT[6]; col 8 = FMT[7]
-  [0,1,2,3,4,5].forEach((c,i)=>{mat[8][c]=FMT[i];fn[8][c]=true;});
-  mat[8][7]=FMT[6]; fn[8][7]=true;
-  mat[8][8]=FMT[7]; fn[8][8]=true;
-  // Col 8: rows 0,1,2,3,4,5 = FMT[6..1] (reversed); row 7 = FMT[0]; row 8 = FMT[7]
-  mat[0][8]=FMT[6]; fn[0][8]=true;
-  mat[1][8]=FMT[5]; fn[1][8]=true;
-  mat[2][8]=FMT[4]; fn[2][8]=true;
-  mat[3][8]=FMT[3]; fn[3][8]=true;
-  mat[4][8]=FMT[2]; fn[4][8]=true;
-  mat[5][8]=FMT[1]; fn[5][8]=true;
-  mat[7][8]=FMT[0]; fn[7][8]=true;
-  // row 8 col 8 already set above
-
-  // Place around top-right finder:
-  // Row 8, cols N-8..N-1 = FMT[7..0] (bit7 at leftmost col N-8)
-  for(let i=0;i<8;i++){mat[8][N-8+i]=FMT[7-i];fn[8][N-8+i]=true;}
-
-  // Place around bottom-left finder:
-  // Col 8, rows N-7..N-1 = FMT[14..8] then dark module
-  for(let i=0;i<7;i++){mat[N-7+i][8]=FMT[14-i];fn[N-7+i][8]=true;}
-  // Dark module at (N-8, 8)
-  mat[N-8][8]=1; fn[N-8][8]=true;
-
-  return mat;
 }
 
 
