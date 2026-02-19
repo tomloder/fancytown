@@ -153,28 +153,12 @@
 
   <!-- DASHBOARD -->
   <div id="tab-dashboard" class="section active">
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-value" id="stat-remaining">—</div><div class="stat-label">Cans Left</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-used">0</div><div class="stat-label">Cans Used</div></div>
-    </div>
     <div class="card">
-      <div class="card-title">Daily Inventory</div>
-      <div class="progress-wrap">
-        <div class="progress-label"><span id="progress-label-left">Loading...</span><span id="progress-label-right">0%</span></div>
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-      </div>
-      <div class="price-display" style="margin-top:10px;">
-        <div class="price-big" id="dash-price">$—</div>
-        <div class="price-unit">per gallon · 5 gal/can</div>
-      </div>
-      <p style="font-size:12px;color:var(--muted);margin-top:6px;">Cost per can: <strong style="color:var(--text)" id="dash-cost-per-can">$—</strong></p>
-    </div>
-    <div class="card">
-      <div class="card-title">Gas Supply — Who Bought What</div>
+      <div class="card-title">Gas Supply</div>
       <div id="dash-buyers"><div class="loading"><span class="spinner"></span>Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Today's Usage — Live 🔴</div>
+      <div class="card-title">Today's Usage</div>
       <div id="dash-log"><div class="loading"><span class="spinner"></span>Loading...</div></div>
     </div>
   </div>
@@ -221,25 +205,29 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Gas Buyers</div>
-      <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-      <hr class="divider">
-      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;">ADD NEW BUYER</div>
-      <label>Name</label>
-      <input type="text" id="new-buyer-name" placeholder="e.g. John" />
-      <div class="inline-row">
-        <div>
-          <label>Cans Bought</label>
-          <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
-        </div>
-        <div>
-          <label>Venmo Handle</label>
-          <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Gas Buyers</div>
+        <button onclick="toggleAddBuyer()" id="add-buyer-toggle" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:22px;line-height:1;padding:0 2px" title="Add buyer">+</button>
       </div>
-      <label>Phone (Apple Pay, optional)</label>
-      <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
-      <button class="btn btn-primary" onclick="addBuyer()">Add Buyer</button>
+      <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+      <div id="add-buyer-form" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;">ADD NEW BUYER</div>
+        <label>Name</label>
+        <input type="text" id="new-buyer-name" placeholder="e.g. John" />
+        <div class="inline-row">
+          <div>
+            <label>Cans Bought</label>
+            <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
+          </div>
+          <div>
+            <label>Venmo Handle</label>
+            <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
+          </div>
+        </div>
+        <label>Phone (Apple Pay, optional)</label>
+        <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
+        <button class="btn btn-primary" onclick="addBuyer()">Add Buyer</button>
+      </div>
     </div>
 
 
@@ -361,7 +349,10 @@ async function addBuyer() {
 }
 
 async function deleteBuyer(id) {
-  if (!confirm('Remove this buyer?')) return;
+  if (!confirm('Remove this buyer and all their usage entries?')) return;
+  // Delete associated entries first to avoid FK constraint error
+  const { error: entryErr } = await sb.from('gas_entries').delete().eq('buyer_id', id);
+  if (entryErr) { showToast('❌ ' + entryErr.message, true); return; }
   const { error } = await sb.from('gas_buyers').delete().eq('id', id);
   if (error) { showToast('❌ ' + error.message, true); return; }
   showToast('🗑️ Buyer removed');
@@ -369,6 +360,28 @@ async function deleteBuyer(id) {
   renderAdminBuyers();
   await populateBuyerSelect();
   renderDashboard();
+}
+
+async function addCans(id, currentTotal) {
+  const n = parseInt(prompt('How many cans to add?'));
+  if (!n || n < 1) return;
+  const newTotal = currentTotal + n;
+  const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
+  if (error) { showToast('❌ ' + error.message, true); return; }
+  showToast('✅ ' + n + ' cans added!');
+  await loadBuyers();
+  renderAdminBuyers();
+  await populateBuyerSelect();
+  renderDashboard();
+  renderQRCodes();
+}
+
+function toggleAddBuyer() {
+  const form = document.getElementById('add-buyer-form');
+  const btn = document.getElementById('add-buyer-toggle');
+  const open = form.style.display === 'none';
+  form.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '−' : '+';
 }
 
 async function populateBuyerSelect() {
@@ -401,6 +414,11 @@ async function renderAdminBuyers() {
   if (buyers.length === 0) {
     el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
     document.getElementById('admin-price').value = settings.pricePerGallon;
+    // Auto-open the add form when there are no buyers
+    const form = document.getElementById('add-buyer-form');
+    const btn = document.getElementById('add-buyer-toggle');
+    if (form) { form.style.display = 'block'; }
+    if (btn) { btn.textContent = '−'; }
     return;
   }
 
@@ -418,10 +436,11 @@ async function renderAdminBuyers() {
     <div class="buyer-item">
       <div style="flex:1">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--muted)">(depleted)</span>' : ''}</div>
-          <div style="display:flex;align-items:center;gap:10px">
+          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--red);margin-left:4px">depleted</span>' : ''}</div>
+          <div style="display:flex;align-items:center;gap:8px">
             <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining}/${b.cans_bought}</div>
-            <button class="btn-icon" onclick="deleteBuyer(${b.id})">&#10005;</button>
+            <button class="btn-icon" style="color:var(--accent);border-color:var(--accent)" onclick="addCans(${b.id}, ${b.cans_bought})" title="Add cans">+</button>
+            <button class="btn-icon" onclick="deleteBuyer(${b.id})" title="Remove buyer">&#10005;</button>
           </div>
         </div>
         <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} spent${b.venmo_handle ? ' &middot; @' + b.venmo_handle : ''}</div>
@@ -430,6 +449,14 @@ async function renderAdminBuyers() {
   }).join('');
 
   document.getElementById('admin-price').value = settings.pricePerGallon;
+
+  // Hide add form when buyers exist; only show if explicitly opened
+  const form = document.getElementById('add-buyer-form');
+  const btn = document.getElementById('add-buyer-toggle');
+  if (form && form.style.display !== 'block') {
+    form.style.display = 'none';
+    if (btn) btn.textContent = '+';
+  }
 }
 
 // ---- HELPERS ----
@@ -468,30 +495,13 @@ function switchTab(id) {
 async function renderDashboard() {
   if (!sb) return;
   const { data: entries } = await sb.from('gas_entries').select('*').eq('entry_date', todayStr());
-
-  // Total cans available = sum of all buyers' cans
-  const totalCans = buyers.reduce((s, b) => s + b.cans_bought, 0);
-  const usedCans = (entries || []).reduce((s, e) => s + e.cans, 0);
-  const remaining = Math.max(0, totalCans - usedCans);
-  const pct = totalCans > 0 ? (usedCans / totalCans) * 100 : 0;
-
-  document.getElementById('stat-remaining').textContent = remaining;
-  document.getElementById('stat-used').textContent = usedCans;
-  document.getElementById('progress-label-left').textContent = `${usedCans} of ${totalCans} cans used`;
-  document.getElementById('progress-label-right').textContent = Math.round(pct) + '%';
-  const fill = document.getElementById('progress-fill');
-  fill.style.width = Math.min(pct, 100) + '%';
-  fill.className = 'progress-fill' + (pct >= 80 ? ' danger' : '');
-  document.getElementById('dash-price').textContent = '$' + settings.pricePerGallon.toFixed(2);
-  document.getElementById('dash-cost-per-can').textContent = '$' + costPerCan().toFixed(2);
-
-  // Buyers breakdown — show remaining per buyer
   const { data: allUsageEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
   (allUsageEntries || []).forEach(e => {
     usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
   });
 
+  // Gas supply — buyers with progress bars
   const buyersEl = document.getElementById('dash-buyers');
   if (buyers.length === 0) {
     buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>&#128100;</span>No buyers added yet — go to Admin</div>';
@@ -517,7 +527,7 @@ async function renderDashboard() {
     }).join('');
   }
 
-  // Today's usage log
+  // Today's usage
   const logEl = document.getElementById('dash-log');
   if (!entries || entries.length === 0) {
     logEl.innerHTML = '<div class="empty-state"><span>⛽</span>No usage logged yet today</div>';
@@ -528,7 +538,7 @@ async function renderDashboard() {
         <div class="log-item">
           <div>
             <div class="log-user">${e.user_name}</div>
-            <div class="log-detail">${buyer ? '→ ' + buyer.name : ''}${e.notes ? ' · ' + e.notes : ''}</div>
+            <div class="log-detail">${buyer ? '→ ' + buyer.name : ''}</div>
           </div>
           <div style="text-align:right">
             <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
