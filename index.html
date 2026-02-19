@@ -106,7 +106,7 @@
   .can-btn.selected { border-color: var(--accent); background: var(--accent); color: #000; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
   .can-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
-  .can-icon { width: 28px; height: 28px; flex-shrink: 0; }
+  .can-icon { width: 28px; height: 38px; flex-shrink: 0; }
   .can-icon.available { color: #e74c3c; }
   .can-icon.used { color: #333; }
   .add-buyer-form { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 12px; }
@@ -495,9 +495,16 @@ async function renderDashboard() {
   });
 
   // Gas supply — can icons per buyer (red=available, dark=used)
-  const canSVG = (cls) => `<svg class="can-icon ${cls}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17 4h-1V2H8v2H7C5.9 2 5 2.9 5 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 4h6v1H9V4zm8 16H7V7h10v13z"/>
-    <rect x="9" y="9" width="6" height="2" rx="1"/>
+  const canSVG = (cls) => `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <!-- Cap -->
+    <rect x="30" y="0" width="30" height="8" rx="4"/>
+    <!-- Neck connecting cap to body -->
+    <rect x="33" y="7" width="24" height="8" rx="3"/>
+    <!-- Jug body with handle hole (even-odd) -->
+    <path fill-rule="evenodd" d="
+      M10 24 Q10 14 20 14 L70 14 Q80 14 80 24 L80 106 Q80 116 70 116 L20 116 Q10 116 10 106 Z
+      M58 28 Q72 28 72 42 L72 66 Q72 78 60 78 L58 78 Z
+    "/>
   </svg>`;
 
   const buyersEl = document.getElementById('dash-buyers');
