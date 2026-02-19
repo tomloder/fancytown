@@ -257,6 +257,8 @@ let buyers = []; // array of { id, name, cans_bought, venmo_handle, phone }
 async function init() {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   document.getElementById('main-app').style.display = 'block';
+  const savedName = localStorage.getItem('gas_user_name');
+  if (savedName) document.getElementById('log-name').value = savedName;
 
   await Promise.all([loadSettings(), loadBuyers()]);
   renderDashboard();
@@ -480,7 +482,11 @@ function switchTab(id) {
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
-  if (id === 'log') { populateBuyerSelect(); }
+  if (id === 'log') {
+    populateBuyerSelect();
+    const savedName = localStorage.getItem('gas_user_name');
+    if (savedName && !document.getElementById('log-name').value) document.getElementById('log-name').value = savedName;
+  }
   if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
 }
 
@@ -523,7 +529,7 @@ async function renderDashboard() {
           <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
             <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
             <div style="font-size:12px;color:${depleted ? 'var(--muted)' : 'var(--text)'}">
-              ${remaining}/${b.cans_bought} &middot; $${(remaining * costPerCan()).toFixed(2)} left
+              ${used}/${b.cans_bought} used &middot; $${(used * costPerCan()).toFixed(2)} owed
             </div>
           </div>
           <div class="can-grid">${cans}</div>
@@ -582,6 +588,7 @@ async function logUsage() {
   btn.disabled = false; btn.textContent = 'Buy Gas';
   if (error) { showToast('❌ ' + error.message, true); return; }
 
+  localStorage.setItem('gas_user_name', document.getElementById('log-name').value.trim());
   document.getElementById('log-name').value = '';
   document.getElementById('log-cans').value = '';
   document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
