@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>⛽ Gas Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
-</script><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root {
     --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
@@ -397,46 +395,43 @@ async function populateBuyerSelect() {
   if (current) sel.value = current;
 }
 
-async function renderQRCodes() {
-  const el = document.getElementById('qr-grid');
-  if (!el) return;
+async function renderAdminBuyers() {
+  const el = document.getElementById('admin-buyers-list');
   if (buyers.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
+    el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
+    document.getElementById('admin-cans').value = settings.startingCans;
+    document.getElementById('admin-price').value = settings.pricePerGallon;
     return;
   }
-  const { data: allEntries } = await sb.from('gasentries').select('buyerid, cans');
-  const usedPerBuyer = {};
-  allEntries.forEach(e => {
-    usedPerBuyer[e.buyerid] = (usedPerBuyer[e.buyerid] || 0) + e.cans;
-  });
-  const appUrl = window.location.href.split('?')[0];
-  el.innerHTML = ''; // Clear loading
-  for (const b of buyers) {
-    const used = usedPerBuyer[b.id] || 0;
-    const remaining = Math.max(0, b.cansbought - used);
-    const depleted = remaining === 0;
-    const url = `${appUrl}?buyer=${b.id}`;
-    const div = document.createElement('div');
-    div.className = `qr-card ${depleted ? 'qr-depleted' : ''}`;
-    // Generate QR canvas client-side
-    const qrCanvas = document.createElement('canvas');
-    qrCanvas.style.cssText = 'display:block;margin:0 auto 8px;border-radius:8px;background:#fff;padding:6px;';
-    try {
-      await QRCode.toCanvas(qrCanvas, url, { width: 240, margin: 1, color: { dark: '#000000', light: '#FFFFFF' } });
-    } catch (err) {
-      qrCanvas.style.display = 'none'; // Hide on error
-      console.error('QR generation failed:', err);
-    }
-    div.appendChild(qrCanvas);
-    div.innerHTML += `
-      <div class="qr-buyer-name">${b.name}</div>
-      <div class="qr-cans">${depleted ? 'Depleted' : `${remaining} can${remaining !== 1 ? 's' : ''} remaining`}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all">${url}</div>
-    `;
-    el.appendChild(div);
-  }
-}
 
+  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
+  const usedPerBuyer = {};
+  (allEntries || []).forEach(e => {
+    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
+  });
+
+  el.innerHTML = buyers.map(b => {
+    const used = usedPerBuyer[b.id] || 0;
+    const remaining = Math.max(0, b.cans_bought - used);
+    const depleted = remaining === 0;
+    return `
+    <div class="buyer-item">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--muted)">(depleted)</span>' : ''}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining}/${b.cans_bought}</div>
+            <button class="btn-icon" onclick="deleteBuyer(${b.id})">&#10005;</button>
+          </div>
+        </div>
+        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} spent${b.venmo_handle ? ' &middot; @' + b.venmo_handle : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('admin-cans').value = settings.startingCans;
+  document.getElementById('admin-price').value = settings.pricePerGallon;
+}
 
 // ---- HELPERS ----
 function costPerCan() { return settings.pricePerGallon * 5; }
