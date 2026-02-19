@@ -19,9 +19,6 @@
   header::before { content: '⛽'; position: absolute; right: -10px; top: -10px; font-size: 100px; opacity: 0.08; }
   header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
   header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .live-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
-
   .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
   .tab { flex: 1; padding: 14px 4px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -102,13 +99,16 @@
   .loading { text-align: center; color: var(--muted); padding: 20px; font-size: 13px; }
   .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .conn-bar { background: var(--surface2); padding: 6px 20px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
 
   .can-btns { display: flex; gap: 10px; margin-bottom: 14px; }
   .can-btn { flex: 1; padding: 16px 0; border-radius: 12px; border: 2px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 28px; cursor: pointer; transition: all 0.15s; }
   .can-btn:active { transform: scale(0.95); }
   .can-btn.selected { border-color: var(--accent); background: var(--accent); color: #000; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .can-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+  .can-icon { width: 28px; height: 28px; flex-shrink: 0; }
+  .can-icon.available { color: #e74c3c; }
+  .can-icon.used { color: #333; }
   .add-buyer-form { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 12px; }
   .add-buyer-form label { margin-top: 8px; }
   .add-buyer-form input { margin-bottom: 10px; }
@@ -141,9 +141,7 @@
 <div id="main-app" style="display:none">
   <header>
     <h1>Gas Tracker</h1>
-    <p><span class="live-dot"></span>Live · shared across all devices</p>
   </header>
-  <div class="conn-bar" id="conn-bar"><span class="spinner"></span> Connecting...</div>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
     <div class="tab" onclick="switchTab('log')">Buy Gas</div>
@@ -296,12 +294,7 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
       loadBuyers().then(() => { renderDashboard(); renderAdminBuyers(); populateBuyerSelect(); renderPayments(); });
     })
-    .subscribe((status) => {
-      const bar = document.getElementById('conn-bar');
-      bar.innerHTML = status === 'SUBSCRIBED'
-        ? '<span class="live-dot"></span> Live — changes sync to all devices instantly'
-        : '<span class="spinner"></span> ' + status + '…';
-    });
+    .subscribe();
 }
 
 // ---- SETTINGS ----
@@ -501,7 +494,12 @@ async function renderDashboard() {
     usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
   });
 
-  // Gas supply — buyers with progress bars
+  // Gas supply — can icons per buyer (red=available, dark=used)
+  const canSVG = (cls) => `<svg class="can-icon ${cls}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 4h-1V2H8v2H7C5.9 2 5 2.9 5 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 4h6v1H9V4zm8 16H7V7h10v13z"/>
+    <rect x="9" y="9" width="6" height="2" rx="1"/>
+  </svg>`;
+
   const buyersEl = document.getElementById('dash-buyers');
   if (buyers.length === 0) {
     buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>&#128100;</span>No buyers added yet — go to Admin</div>';
@@ -509,20 +507,19 @@ async function renderDashboard() {
     buyersEl.innerHTML = buyers.map(b => {
       const used = usedPerBuyer[b.id] || 0;
       const remaining = Math.max(0, b.cans_bought - used);
-      const pctUsed = b.cans_bought > 0 ? (used / b.cans_bought) * 100 : 0;
       const depleted = remaining === 0;
+      const cans = Array.from({length: b.cans_bought}, (_, i) =>
+        canSVG(i < remaining ? 'available' : 'used')
+      ).join('');
       return `
-        <div class="buyer-item">
-          <div style="flex:1">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
-              <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining} left</div>
-            </div>
-            <div class="buyer-meta">${used}/${b.cans_bought} used &middot; $${(b.cans_bought * costPerCan()).toFixed(2)} spent</div>
-            <div style="height:4px;background:var(--border);border-radius:99px;margin-top:6px;overflow:hidden">
-              <div style="height:100%;width:${Math.min(pctUsed,100)}%;background:${depleted ? 'var(--muted)' : 'linear-gradient(90deg,var(--accent),var(--accent2))'};border-radius:99px"></div>
+        <div class="buyer-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+            <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
+            <div style="font-size:12px;color:${depleted ? 'var(--muted)' : 'var(--text)'}">
+              ${remaining}/${b.cans_bought} &middot; $${(remaining * costPerCan()).toFixed(2)} left
             </div>
           </div>
+          <div class="can-grid">${cans}</div>
         </div>`;
     }).join('');
   }
