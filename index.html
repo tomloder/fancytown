@@ -34,11 +34,12 @@
       radial-gradient(ellipse at 20% 20%, #7a8f6a 0%, transparent 50%),
       radial-gradient(ellipse at 80% 80%, #5a6b4a 0%, transparent 50%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    padding: 20px 10px 40px;
+    align-items: stretch;
+    padding: 0;
     font-family: 'Caveat', cursive;
   }
 
@@ -46,21 +47,25 @@
   #main-app {
     width: 100%;
     max-width: 460px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     position: relative;
   }
 
   /* Clipboard backing board */
   .clipboard-board {
     background: linear-gradient(160deg, #8B5E3C 0%, #6B4423 40%, #7a5230 100%);
-    border-radius: 6px 6px 4px 4px;
-    padding: 68px 14px 20px;
+    border-radius: 0;
+    padding: 30px 14px 14px;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.15),
       inset -2px 0 4px rgba(0,0,0,0.2),
-      inset 2px 0 4px rgba(0,0,0,0.1),
-      4px 6px 20px rgba(0,0,0,0.5),
-      0 2px 6px rgba(0,0,0,0.3);
+      inset 2px 0 4px rgba(0,0,0,0.1);
     position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Wood grain texture overlay */
@@ -92,6 +97,7 @@
     width: 100px;
     height: 70px;
     z-index: 20;
+    /* clip-body overlaps top of paper */
   }
 
   .clip-body {
@@ -140,6 +146,10 @@
   /* ── PAPER STACK ── */
   .paper-stack {
     position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   /* Paper sheets peeking behind */
@@ -169,59 +179,20 @@
     background: var(--paper);
     border-radius: 1px 1px 3px 3px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     overflow: hidden;
   }
 
-  /* Ruled lines on the paper */
-  .paper::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(
-        180deg,
-        transparent 0px,
-        transparent 27px,
-        var(--paper-lines) 27px,
-        var(--paper-lines) 28px
-      );
-    background-position: 0 36px;
-    pointer-events: none;
-    opacity: 0.5;
-  }
+  /* No ruled lines or margin line — clean paper */
 
-  /* Red margin line */
-  .paper::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0;
-    left: 42px;
-    width: 1.5px;
-    background: rgba(192,57,43,0.25);
-    pointer-events: none;
-  }
 
-  /* Hole punches */
-  .holes {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 22px;
-    display: flex;
-    justify-content: center;
-    gap: 60px;
-    padding-top: 6px;
-    z-index: 10;
-  }
-  .hole {
-    width: 10px; height: 10px;
-    background: radial-gradient(circle, var(--wood-dark) 40%, #5a3a1a 100%);
-    border-radius: 50%;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.1);
-  }
 
   /* ── HEADER ON PAPER ── */
   .paper-header {
-    padding: 24px 18px 10px 50px;
+    padding: 38px 18px 10px 18px;
     border-bottom: 1.5px solid rgba(192,57,43,0.2);
     position: relative;
   }
@@ -293,7 +264,7 @@
   }
 
   /* ── SECTIONS ── */
-  .section { display: none; padding: 14px 16px 20px 50px; }
+  .section { display: none; padding: 14px 16px 20px 16px; overflow-y: auto; flex: 1; }
   .section.active { display: block; }
 
   /* ── SECTION HEADINGS ── */
@@ -331,7 +302,7 @@
   .ruled-line {
     border: none;
     border-bottom: 1px solid rgba(44,36,22,0.2);
-    margin: 0 0 10px -36px;
+    margin: 0 0 10px 0;
   }
 
   /* ── INPUTS ── */
@@ -472,9 +443,9 @@
 
   /* ── BUY GAS BUTTON ── */
   .buy-gas-btn {
-    width: calc(100% + 36px);
-    margin-left: -36px;
-    padding: 13px 16px 12px 50px;
+    width: calc(100% + 32px);
+    margin-left: -16px;
+    padding: 13px 16px 12px 18px;
     border: none;
     border-top: 1.5px dashed rgba(44,36,22,0.2);
     border-bottom: 1.5px dashed rgba(44,36,22,0.2);
@@ -695,22 +666,8 @@
     margin: 0 auto;
     background: var(--paper);
     border-radius: 4px 4px 0 0;
-    padding: 20px 16px 36px 50px;
+    padding: 20px 16px 36px 16px;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-    /* ruled lines */
-    background-image:
-      repeating-linear-gradient(180deg, transparent 0px, transparent 27px, var(--paper-lines) 27px, var(--paper-lines) 28px);
-    background-position: 0 10px;
-  }
-
-  /* Red margin line in modal */
-  .modal-sheet::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0; left: 42px;
-    width: 1.5px;
-    background: rgba(192,57,43,0.2);
-    pointer-events: none;
   }
 
   .modal-header {
@@ -749,17 +706,7 @@
     gap: 2px;
   }
 
-  /* ── PENCIL DECORATION ── */
-  .pencil-deco {
-    position: absolute;
-    right: -8px;
-    bottom: 60px;
-    width: 16px;
-    height: 160px;
-    transform: rotate(5deg);
-    pointer-events: none;
-    z-index: 1;
-  }
+
 
   /* ── PAPER CLIP DECO ── */
   .paper-note {
@@ -779,13 +726,13 @@
   .section-divider {
     border: none;
     border-bottom: 1px dashed rgba(44,36,22,0.2);
-    margin: 12px -36px 12px 0;
+    margin: 12px 0 12px 0;
   }
 
   @media print {
     body { background: white; padding: 0; }
     .clipboard-board { box-shadow: none; background: white; padding-top: 20px; }
-    .clip, .paper-stack::before, .paper-stack::after, .pencil-deco { display: none; }
+    .clip, .paper-stack::before, .paper-stack::after { display: none; }
     header, .tabs, #tab-dashboard, #tab-pay { display: none !important; }
     #tab-admin .card:not(.qr-print-card) { display: none !important; }
     .qr-card { background: white; border: 1px solid #ccc; break-inside: avoid; }
@@ -807,41 +754,12 @@
   </div>
 
   <!-- Pencil decoration -->
-  <svg class="pencil-deco" viewBox="0 0 16 160" xmlns="http://www.w3.org/2000/svg">
-    <!-- Eraser -->
-    <rect x="2" y="0" width="12" height="14" rx="2" fill="#e8a090"/>
-    <rect x="2" y="12" width="12" height="3" fill="#c08878"/>
-    <!-- Metal band -->
-    <rect x="1" y="15" width="14" height="6" fill="#b8b0a0"/>
-    <rect x="1" y="18" width="14" height="1" fill="#a0988a"/>
-    <!-- Wood body -->
-    <rect x="2" y="21" width="12" height="110" fill="#f5c870"/>
-    <rect x="4" y="21" width="2" height="110" fill="rgba(255,255,255,0.3)"/>
-    <rect x="10" y="21" width="1" height="110" fill="rgba(0,0,0,0.08)"/>
-    <!-- Painted body hex cross-lines -->
-    <line x1="2" y1="40" x2="14" y2="40" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-    <line x1="2" y1="60" x2="14" y2="60" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-    <line x1="2" y1="80" x2="14" y2="80" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-    <line x1="2" y1="100" x2="14" y2="100" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-    <!-- Tip cone -->
-    <polygon points="2,131 14,131 8,148" fill="#e8c880"/>
-    <!-- Graphite tip -->
-    <polygon points="5,146 11,146 8,156" fill="#3a3530"/>
-  </svg>
-
   <!-- Paper stack -->
   <div class="paper-stack">
     <div class="paper">
-      <div class="holes">
-        <div class="hole"></div>
-        <div class="hole"></div>
-        <div class="hole"></div>
-      </div>
-
       <!-- Header -->
       <div class="paper-header">
         <div class="paper-title">Der Gasser Upper</div>
-        <div class="paper-subtitle">gas can usage tracker</div>
         <div class="paper-date" id="header-date"></div>
       </div>
 
@@ -856,7 +774,7 @@
       <div id="tab-dashboard" class="section active">
 
         <!-- Buy Gas button -->
-        <button class="buy-gas-btn" onclick="openModal()">
+        <button class="buy-gas-btn" id="buy-gas-btn" onclick="openModal()" style="display:none">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 22V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/>
             <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0"/>
@@ -1264,17 +1182,23 @@ async function renderDashboard() {
   const usedPerBuyer = {};
   (allUsageEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
 
+  // Show buy gas button only if any cans available
+  const totalRemaining = buyers.reduce((sum, b) => {
+    const used = usedPerBuyer[b.id] || 0;
+    return sum + Math.max(0, b.cans_bought - used);
+  }, 0);
+  const buyBtn = document.getElementById('buy-gas-btn');
+  if (buyBtn) buyBtn.style.display = totalRemaining > 0 ? 'flex' : 'none';
+
   // Sketch-style gas can SVG (hand-drawn look with slightly wobbly stroke)
   const canSVG = (cls, buyerId) => {
     const clickable = cls === 'available' && buyerId;
     const onclick = clickable ? `onclick="selectBuyerAndGo(${buyerId})" style="cursor:pointer"` : '';
-    // Sketch-style: uses stroke instead of fill for hand-drawn look
-    const strokeColor = cls === 'available' ? '#c0392b' : 'rgba(44,36,22,0.18)';
-    return `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="none" xmlns="http://www.w3.org/2000/svg" ${onclick} stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    const fillColor = cls === 'available' ? '#c0392b' : 'rgba(44,36,22,0.15)';
+    return `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="${fillColor}" xmlns="http://www.w3.org/2000/svg" ${onclick}>
       <rect x="30" y="2" width="30" height="9" rx="3"/>
       <rect x="33" y="9" width="24" height="8" rx="2"/>
-      <path d="M12 26 Q11 16 22 16 L68 16 Q79 15 79 26 L80 104 Q80 115 69 116 L21 116 Q11 116 11 105 Z"/>
-      <path d="M60 29 Q73 30 72 43 L72 67 Q71 79 61 79 L60 79"/>
+      <path fill-rule="evenodd" d="M10 24 Q10 14 20 14 L70 14 Q80 14 80 24 L80 106 Q80 116 70 116 L20 116 Q10 116 10 106 Z M58 28 Q72 28 72 42 L72 66 Q72 78 60 78 L58 78 Z"/>
     </svg>`;
   };
 
