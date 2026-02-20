@@ -3,134 +3,792 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>⛽ Gas Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>Der Gasser Upper</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root {
-    --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
-    --border: #2a2a2a; --accent: #f5a623; --accent2: #ff6b35;
-    --text: #f0f0f0; --muted: #777; --green: #2ecc71; --red: #e74c3c;
+    --paper: #f4f0e8;
+    --paper-dark: #e8e3d5;
+    --paper-lines: #c8d4e8;
+    --clip: #b5882a;
+    --clip-dark: #8a6520;
+    --clip-shine: #e8c060;
+    --pencil: #2c2416;
+    --pencil-light: #5a4f3e;
+    --pencil-faint: #9a8f7e;
+    --red-ink: #c0392b;
+    --blue-ink: #2471a3;
+    --green-ink: #1e8449;
+    --rubber: #e8a090;
+    --wood: #8B5E3C;
+    --wood-dark: #6B4423;
+    --shadow: rgba(0,0,0,0.25);
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
 
-  header { background: linear-gradient(135deg, #1a1000 0%, #0d0d0d 60%); padding: 24px 20px 20px; border-bottom: 1px solid var(--border); text-align: center; }
-  header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
-  header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
-  .tab { flex: 1; padding: 14px 4px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  body {
+    background: #6b7c5a;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, #7a8f6a 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, #5a6b4a 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 10px 40px;
+    font-family: 'Caveat', cursive;
+  }
 
-  .section { display: none; padding: 20px; }
+  /* ── CLIPBOARD SHELL ── */
+  #main-app {
+    width: 100%;
+    max-width: 460px;
+    position: relative;
+  }
+
+  /* Clipboard backing board */
+  .clipboard-board {
+    background: linear-gradient(160deg, #8B5E3C 0%, #6B4423 40%, #7a5230 100%);
+    border-radius: 6px 6px 4px 4px;
+    padding: 68px 14px 20px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.15),
+      inset -2px 0 4px rgba(0,0,0,0.2),
+      inset 2px 0 4px rgba(0,0,0,0.1),
+      4px 6px 20px rgba(0,0,0,0.5),
+      0 2px 6px rgba(0,0,0,0.3);
+    position: relative;
+  }
+
+  /* Wood grain texture overlay */
+  .clipboard-board::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: repeating-linear-gradient(
+      92deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(0,0,0,0.04) 8px,
+      rgba(0,0,0,0.04) 9px,
+      transparent 9px,
+      transparent 18px,
+      rgba(255,255,255,0.03) 18px,
+      rgba(255,255,255,0.03) 19px
+    );
+    pointer-events: none;
+  }
+
+  /* ── METAL CLIP ── */
+  .clip {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 70px;
+    z-index: 20;
+  }
+
+  .clip-body {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    top: 8px;
+    height: 55px;
+    background: linear-gradient(135deg, #d4a840 0%, #b8891e 30%, #e8c860 50%, #a07010 70%, #c89830 100%);
+    border-radius: 4px 4px 2px 2px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+
+  .clip-spring {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    top: 0;
+    height: 28px;
+    background: linear-gradient(135deg, #c0902a 0%, #e0b040 40%, #a07820 60%, #d4a030 100%);
+    border-radius: 30px 30px 0 0;
+    border: 2px solid #907010;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
+  }
+
+  .clip-spring::after {
+    content: '';
+    position: absolute;
+    left: 8px; right: 8px; top: 6px; bottom: 4px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+  }
+
+  .clip-hole {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -30%);
+    width: 18px; height: 22px;
+    background: var(--wood-dark);
+    border-radius: 2px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  /* ── PAPER STACK ── */
+  .paper-stack {
+    position: relative;
+  }
+
+  /* Paper sheets peeking behind */
+  .paper-stack::before,
+  .paper-stack::after {
+    content: '';
+    position: absolute;
+    background: #ece8df;
+    border-radius: 0 0 3px 3px;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.15);
+  }
+  .paper-stack::before {
+    top: 3px; left: -4px; right: -3px; bottom: -3px;
+    transform: rotate(-1.2deg);
+    background: #e8e4db;
+  }
+  .paper-stack::after {
+    top: 2px; left: -2px; right: -4px; bottom: -2px;
+    transform: rotate(0.8deg);
+    background: #ede9e0;
+  }
+
+  /* Main paper sheet */
+  .paper {
+    position: relative;
+    z-index: 5;
+    background: var(--paper);
+    border-radius: 1px 1px 3px 3px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+
+  /* Ruled lines on the paper */
+  .paper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        180deg,
+        transparent 0px,
+        transparent 27px,
+        var(--paper-lines) 27px,
+        var(--paper-lines) 28px
+      );
+    background-position: 0 36px;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* Red margin line */
+  .paper::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 42px;
+    width: 1.5px;
+    background: rgba(192,57,43,0.25);
+    pointer-events: none;
+  }
+
+  /* Hole punches */
+  .holes {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 22px;
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    padding-top: 6px;
+    z-index: 10;
+  }
+  .hole {
+    width: 10px; height: 10px;
+    background: radial-gradient(circle, var(--wood-dark) 40%, #5a3a1a 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  /* ── HEADER ON PAPER ── */
+  .paper-header {
+    padding: 24px 18px 10px 50px;
+    border-bottom: 1.5px solid rgba(192,57,43,0.2);
+    position: relative;
+  }
+
+  .paper-title {
+    font-family: 'Caveat', cursive;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--pencil);
+    line-height: 1;
+    letter-spacing: -0.5px;
+    /* Slight hand-drawn wobble */
+    transform: rotate(-0.5deg);
+    display: inline-block;
+  }
+
+  .paper-subtitle {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--pencil-faint);
+    margin-top: 3px;
+    transform: rotate(-0.3deg);
+    display: inline-block;
+  }
+
+  /* Date stamp top right */
+  .paper-date {
+    position: absolute;
+    top: 22px; right: 14px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 11px;
+    color: var(--pencil-faint);
+    text-align: right;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: transparent;
+    border-bottom: 1.5px solid rgba(44,36,22,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background: var(--paper);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 4px 8px;
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pencil-faint);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  .tab.active {
+    color: var(--pencil);
+    border-bottom-color: var(--pencil);
+  }
+
+  /* Underline squiggle effect on active tab */
+  .tab.active::after {
+    content: '';
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 14px 16px 20px 50px; }
   .section.active { display: block; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
-  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  /* ── SECTION HEADINGS ── */
+  .section-label {
+    font-family: 'Caveat', cursive;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pencil-faint);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  .section-label:first-child { margin-top: 4px; }
 
-  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
-  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; line-height: 1; color: var(--accent); }
-  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  /* ── CARDS ── */
+  .card {
+    background: transparent;
+    margin-bottom: 16px;
+    position: relative;
+  }
 
-  .progress-wrap { margin: 6px 0 10px; }
-  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.5s; }
-  .progress-fill.danger { background: linear-gradient(90deg, var(--accent2), var(--red)); }
+  .card-title {
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--pencil);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
 
-  label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.3px; }
-  input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 12px 14px; margin-bottom: 14px; outline: none; transition: border-color 0.2s; appearance: none; -webkit-appearance: none; }
-  input:focus, select:focus { border-color: var(--accent); }
+  /* Horizontal rule drawn under section titles */
+  .ruled-line {
+    border: none;
+    border-bottom: 1px solid rgba(44,36,22,0.2);
+    margin: 0 0 10px -36px;
+  }
+
+  /* ── INPUTS ── */
+  label {
+    display: block;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+    color: var(--pencil-faint);
+    margin-bottom: 3px;
+    margin-top: 10px;
+  }
+
+  input, select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid var(--pencil-light);
+    border-radius: 0;
+    color: var(--pencil);
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    padding: 4px 2px 3px;
+    margin-bottom: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input:focus, select:focus {
+    border-bottom-color: var(--pencil);
+  }
+
+  input::placeholder {
+    color: var(--pencil-faint);
+    opacity: 0.5;
+    font-size: 16px;
+  }
+
   input[type=number] { -moz-appearance: textfield; }
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23777' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
-  select option { background: #1f1f1f; color: #f0f0f0; }
 
-  .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; text-align: center; }
-  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
-  .btn-sm { display: inline-block; width: auto; padding: 8px 14px; font-size: 12px; border-radius: 8px; }
-  .btn-venmo { background: #3d95ce; color: #fff; }
-  .btn-apple { background: #000; color: #fff; border: 1px solid #333; }
-  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); margin-top: 8px; }
-  .btn-icon { background: transparent; border: 1px solid var(--border); color: var(--red); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath fill='%235a4f3e' d='M5 7L0 0h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    padding-right: 20px;
+    cursor: pointer;
+  }
 
-  .log-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  select option { background: #f4f0e8; color: #2c2416; font-family: 'Caveat', cursive; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--pencil);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--pencil);
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.1s;
+    text-decoration: none;
+    text-align: center;
+    margin-top: 12px;
+    /* Sketch border - use box-shadow to simulate rough edges */
+    box-shadow: 1px 1px 0 rgba(44,36,22,0.3), inset 1px 1px 0 rgba(255,255,255,0.4);
+    position: relative;
+    letter-spacing: 0.3px;
+  }
+
+  /* Sketch-style button border wobble */
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 1px solid rgba(44,36,22,0.15);
+    border-radius: 2px;
+    transform: rotate(-0.3deg);
+  }
+
+  .btn:active { transform: translateY(1px); box-shadow: none; }
+
+  .btn-primary {
+    background: var(--pencil);
+    color: var(--paper);
+    border-color: var(--pencil);
+  }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-outline {
+    border-color: var(--pencil-faint);
+    color: var(--pencil-light);
+  }
+
+  .btn-danger {
+    border-color: var(--red-ink);
+    color: var(--red-ink);
+  }
+
+  .btn-sm {
+    display: inline-block;
+    width: auto;
+    padding: 4px 10px;
+    font-size: 14px;
+    margin-top: 6px;
+    margin-right: 4px;
+  }
+
+  .btn-venmo {
+    border-color: #2471a3;
+    color: #2471a3;
+    background: transparent;
+  }
+
+  .btn-apple {
+    border-color: var(--pencil);
+    color: var(--pencil);
+    background: transparent;
+  }
+
+  .btn-icon {
+    background: transparent;
+    border: 1.5px solid var(--pencil-faint);
+    color: var(--pencil);
+    border-radius: 2px;
+    padding: 3px 9px;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: 'Caveat', cursive;
+    transition: all 0.1s;
+  }
+  .btn-icon:active { transform: scale(0.95); }
+
+  /* ── BUY GAS BUTTON ── */
+  .buy-gas-btn {
+    width: calc(100% + 36px);
+    margin-left: -36px;
+    padding: 13px 16px 12px 50px;
+    border: none;
+    border-top: 1.5px dashed rgba(44,36,22,0.2);
+    border-bottom: 1.5px dashed rgba(44,36,22,0.2);
+    background: rgba(44,36,22,0.04);
+    color: var(--pencil);
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    transition: background 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .buy-gas-btn:active { background: rgba(44,36,22,0.09); }
+
+  /* ── CAN NUMBER BUTTONS ── */
+  .can-btns { display: flex; gap: 8px; margin: 8px 0 12px; }
+
+  .can-btn {
+    flex: 1;
+    padding: 12px 0;
+    border: 1.5px solid var(--pencil-light);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--pencil-light);
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+  }
+  .can-btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 1px solid rgba(44,36,22,0.1);
+    border-radius: 2px;
+    transform: rotate(-0.5deg);
+  }
+  .can-btn:active { transform: scale(0.96); }
+  .can-btn.selected {
+    background: var(--pencil);
+    color: var(--paper);
+    border-color: var(--pencil);
+  }
+
+  /* ── LOG ITEMS ── */
+  .log-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(44,36,22,0.15);
+    gap: 8px;
+  }
   .log-item:last-child { border-bottom: none; }
-  .log-user { font-weight: 600; font-size: 15px; }
-  .log-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .log-cans { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); line-height: 1; }
-  .log-cost { font-size: 12px; color: var(--muted); }
-  .log-paid { font-size: 11px; color: var(--green); font-weight: 600; }
 
-  /* BUYER CARDS in admin */
-  .buyer-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .log-user {
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--pencil);
+    line-height: 1.2;
+  }
+  .log-detail {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--pencil-faint);
+    margin-top: 1px;
+  }
+  .log-cans {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--pencil);
+    line-height: 1;
+  }
+  .log-cost {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--pencil-faint);
+  }
+  .log-paid {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 11px;
+    color: var(--green-ink);
+    font-weight: 600;
+  }
+
+  /* ── BUYER ITEMS ── */
+  .buyer-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(44,36,22,0.15);
+  }
   .buyer-item:last-child { border-bottom: none; }
-  .buyer-name { font-weight: 600; font-size: 15px; }
-  .buyer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .buyer-cans { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); }
+  .buyer-name {
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--pencil);
+  }
+  .buyer-meta {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--pencil-faint);
+    margin-top: 2px;
+  }
+  .buyer-cans {
+    font-family: 'Caveat', cursive;
+    font-size: 20px;
+    color: var(--pencil);
+  }
 
-  /* PAYMENT SECTION */
-  .buyer-section { margin-bottom: 18px; }
-  .buyer-section-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
-  .buyer-section-name { font-weight: 700; font-size: 16px; }
-  .buyer-section-sub { font-size: 12px; color: var(--muted); }
-  .buyer-total { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--accent2); }
-  .ower-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  /* ── CAN ICONS (sketch style) ── */
+  .can-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0; }
+  .can-icon { width: 26px; height: 34px; flex-shrink: 0; }
+  .can-icon.available { color: var(--red-ink); }
+  .can-icon.used { color: rgba(44,36,22,0.18); }
+
+  /* ── PAYMENT SECTION ── */
+  .buyer-section { margin-bottom: 16px; }
+  .buyer-section-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 0 8px; border-bottom: 1.5px solid rgba(44,36,22,0.2); margin-bottom: 4px; }
+  .buyer-section-name { font-family: 'Caveat', cursive; font-weight: 700; font-size: 20px; color: var(--pencil); }
+  .buyer-section-sub { font-family: 'Patrick Hand', cursive; font-size: 12px; color: var(--pencil-faint); }
+  .buyer-total { font-family: 'Caveat', cursive; font-size: 28px; color: var(--red-ink); font-weight: 700; }
+  .ower-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed rgba(44,36,22,0.12); }
   .ower-row:last-child { border-bottom: none; }
-  .ower-name { font-size: 14px; font-weight: 500; }
-  .ower-amount { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--accent); margin-right: 8px; }
-  .pay-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .ower-name { font-family: 'Caveat', cursive; font-size: 17px; color: var(--pencil); font-weight: 600; }
+  .ower-amount { font-family: 'Caveat', cursive; font-size: 20px; color: var(--blue-ink); font-weight: 700; }
+  .pay-btns { display: flex; gap: 5px; flex-wrap: wrap; }
 
-  .price-display { display: flex; align-items: baseline; gap: 4px; }
-  .price-big { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--accent); line-height: 1; }
-  .price-unit { color: var(--muted); font-size: 13px; }
-  .section-heading { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--accent); margin-bottom: 14px; }
-  .empty-state { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
-  .empty-state span { display: block; font-size: 36px; margin-bottom: 8px; }
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    color: var(--pencil-faint);
+    padding: 20px 0;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+  }
 
-  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--accent); color: #000; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 99px; transition: transform 0.3s; z-index: 100; white-space: nowrap; }
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--pencil);
+    color: var(--paper);
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    padding: 10px 22px;
+    border-radius: 2px;
+    transition: transform 0.3s;
+    z-index: 300;
+    white-space: nowrap;
+    box-shadow: 2px 3px 0 rgba(0,0,0,0.3);
+  }
+  .toast::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 2px;
+    transform: rotate(-0.4deg);
+  }
   .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.error { background: var(--red); color: #fff; }
+  .toast.error { background: var(--red-ink); }
 
-  .loading { text-align: center; color: var(--muted); padding: 20px; font-size: 13px; }
-  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  /* ── LOADING ── */
+  .loading {
+    text-align: center;
+    color: var(--pencil-faint);
+    padding: 16px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(44,36,22,0.2);
+    border-top-color: var(--pencil);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .can-btns { display: flex; gap: 10px; margin-bottom: 14px; }
-  .can-btn { flex: 1; padding: 16px 0; border-radius: 12px; border: 2px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 28px; cursor: pointer; transition: all 0.15s; }
-  .can-btn:active { transform: scale(0.95); }
-  .can-btn.selected { border-color: var(--accent); background: var(--accent); color: #000; }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
-  .can-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
-  .can-icon { width: 28px; height: 38px; flex-shrink: 0; }
-  .can-icon.available { color: #e74c3c; }
-  .can-icon.used { color: #333; }
-  .add-buyer-form { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 12px; }
-  .add-buyer-form label { margin-top: 8px; }
-  .add-buyer-form input { margin-bottom: 10px; }
-  .inline-row { display: flex; gap: 10px; }
-  .inline-row > div { flex: 1; }
-
-  /* QR CODE PRINT */
-  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; max-width: 100%; }
-  .qr-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; min-width: 0; overflow: hidden; }
-  .qr-card canvas { border-radius: 8px; display: block; margin: 0 auto 8px; }
-  .qr-buyer-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
-  .qr-cans { font-size: 11px; color: var(--muted); }
+  /* ── QR CODES ── */
+  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .qr-card { background: rgba(255,255,255,0.6); border: 1.5px solid rgba(44,36,22,0.2); border-radius: 2px; padding: 10px; text-align: center; min-width: 0; overflow: hidden; }
+  .qr-buyer-name { font-family: 'Caveat', cursive; font-weight: 700; font-size: 14px; margin-bottom: 2px; color: var(--pencil); }
+  .qr-cans { font-family: 'Patrick Hand', cursive; font-size: 11px; color: var(--pencil-faint); }
   .qr-depleted { opacity: 0.4; }
 
+  /* ── MODAL ── */
+  #buy-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-sheet {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    max-width: 460px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: 4px 4px 0 0;
+    padding: 20px 16px 36px 50px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    /* ruled lines */
+    background-image:
+      repeating-linear-gradient(180deg, transparent 0px, transparent 27px, var(--paper-lines) 27px, var(--paper-lines) 28px);
+    background-position: 0 10px;
+  }
+
+  /* Red margin line in modal */
+  .modal-sheet::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 42px;
+    width: 1.5px;
+    background: rgba(192,57,43,0.2);
+    pointer-events: none;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .modal-title {
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--pencil);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    color: var(--pencil-faint);
+    cursor: pointer;
+    font-family: 'Caveat', cursive;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+
+  /* ── INLINE ROW ── */
+  .inline-row { display: flex; gap: 16px; }
+  .inline-row > div { flex: 1; }
+
+  /* ── TALLY MARKS (for counts) ── */
+  .tally {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* ── PENCIL DECORATION ── */
+  .pencil-deco {
+    position: absolute;
+    right: -8px;
+    bottom: 60px;
+    width: 16px;
+    height: 160px;
+    transform: rotate(5deg);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── PAPER CLIP DECO ── */
+  .paper-note {
+    background: rgba(255,255,0,0.15);
+    border-left: 3px solid rgba(192,57,43,0.3);
+    padding: 4px 8px;
+    margin: 6px 0;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--pencil-faint);
+    font-style: italic;
+  }
+
+  .inline-row label { margin-top: 0; }
+
+  /* Section divider line */
+  .section-divider {
+    border: none;
+    border-bottom: 1px dashed rgba(44,36,22,0.2);
+    margin: 12px -36px 12px 0;
+  }
+
   @media print {
-    body { background: white; max-width: none; }
-    header, .tabs, .conn-bar, #tab-dashboard, #tab-log, #tab-pay { display: none !important; }
+    body { background: white; padding: 0; }
+    .clipboard-board { box-shadow: none; background: white; padding-top: 20px; }
+    .clip, .paper-stack::before, .paper-stack::after, .pencil-deco { display: none; }
+    header, .tabs, #tab-dashboard, #tab-pay { display: none !important; }
     #tab-admin .card:not(.qr-print-card) { display: none !important; }
-    .qr-print-card { border: none !important; }
-    .section-heading, .btn, hr { display: none !important; }
-    .qr-card { background: white; border: 2px solid #ddd; break-inside: avoid; }
-    .qr-buyer-name { color: black; }
-    .qr-cans { color: #666; }
+    .qr-card { background: white; border: 1px solid #ccc; break-inside: avoid; }
     .section { display: block !important; }
   }
 </style>
@@ -138,107 +796,245 @@
 <body>
 
 <div id="main-app" style="display:none">
-  <header>
-    <h1>Der Gasser Upper</h1>
-  </header>
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
-    <div class="tab" onclick="switchTab('log')">Buy Gas</div>
-    <div class="tab" onclick="switchTab('pay')">Payments</div>
-    <div class="tab" onclick="switchTab('admin')">Admin</div>
-  </div>
+<div class="clipboard-board">
 
-  <!-- DASHBOARD -->
-  <div id="tab-dashboard" class="section active">
-    <div class="card">
-      <div class="card-title">Gas Supply</div>
-      <div id="dash-buyers"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Today's Usage</div>
-      <div id="dash-log"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+  <!-- Metal clip -->
+  <div class="clip">
+    <div class="clip-spring"></div>
+    <div class="clip-body">
+      <div class="clip-hole"></div>
     </div>
   </div>
 
-  <!-- LOG USAGE -->
-  <div id="tab-log" class="section">
-    <div class="section-heading">Buy Gas</div>
-    <div class="card">
-      <label>Your Name</label>
-      <input type="text" id="log-name" placeholder="e.g. Mike" />
-      <label>Who Supplied the Gas?</label>
-      <select id="log-buyer">
-        <option value="">— Select buyer —</option>
-      </select>
-      <label>Number of Cans</label>
-      <div class="can-btns" id="can-btns">
-        <button class="can-btn" onclick="selectCans(1)">1</button>
-        <button class="can-btn" onclick="selectCans(2)">2</button>
-        <button class="can-btn" onclick="selectCans(3)">3</button>
-        <button class="can-btn" onclick="selectCans(4)">4</button>
-        <button class="can-btn" onclick="selectCans(5)">5</button>
+  <!-- Pencil decoration -->
+  <svg class="pencil-deco" viewBox="0 0 16 160" xmlns="http://www.w3.org/2000/svg">
+    <!-- Eraser -->
+    <rect x="2" y="0" width="12" height="14" rx="2" fill="#e8a090"/>
+    <rect x="2" y="12" width="12" height="3" fill="#c08878"/>
+    <!-- Metal band -->
+    <rect x="1" y="15" width="14" height="6" fill="#b8b0a0"/>
+    <rect x="1" y="18" width="14" height="1" fill="#a0988a"/>
+    <!-- Wood body -->
+    <rect x="2" y="21" width="12" height="110" fill="#f5c870"/>
+    <rect x="4" y="21" width="2" height="110" fill="rgba(255,255,255,0.3)"/>
+    <rect x="10" y="21" width="1" height="110" fill="rgba(0,0,0,0.08)"/>
+    <!-- Painted body hex cross-lines -->
+    <line x1="2" y1="40" x2="14" y2="40" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+    <line x1="2" y1="60" x2="14" y2="60" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+    <line x1="2" y1="80" x2="14" y2="80" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+    <line x1="2" y1="100" x2="14" y2="100" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+    <!-- Tip cone -->
+    <polygon points="2,131 14,131 8,148" fill="#e8c880"/>
+    <!-- Graphite tip -->
+    <polygon points="5,146 11,146 8,156" fill="#3a3530"/>
+  </svg>
+
+  <!-- Paper stack -->
+  <div class="paper-stack">
+    <div class="paper">
+      <div class="holes">
+        <div class="hole"></div>
+        <div class="hole"></div>
+        <div class="hole"></div>
       </div>
-      <input type="hidden" id="log-cans" value="" />
-      <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Buy Gas</button>
-    </div>
 
-  </div>
-
-  <!-- PAYMENTS -->
-  <div id="tab-pay" class="section">
-    <div class="section-heading">What's Owed</div>
-    <div id="payment-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-  </div>
-
-  <!-- ADMIN -->
-  <div id="tab-admin" class="section">
-    <div class="section-heading">Admin Settings</div>
-
-    <div class="card">
-      <div class="card-title">Price Per Gallon</div>
-      <label>Price Per Gallon ($)</label>
-      <input type="number" id="admin-price" placeholder="3.50" step="0.01" min="0" />
-      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="card-title" style="margin-bottom:0">Gas Buyers</div>
-        <button onclick="toggleAddBuyer()" id="add-buyer-toggle" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:22px;line-height:1;padding:0 2px" title="Add buyer">+</button>
+      <!-- Header -->
+      <div class="paper-header">
+        <div class="paper-title">Der Gasser Upper</div>
+        <div class="paper-subtitle">gas can usage tracker</div>
+        <div class="paper-date" id="header-date"></div>
       </div>
-      <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-      <div id="add-buyer-form" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:14px">
-        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;">ADD NEW BUYER</div>
-        <label>Name</label>
-        <input type="text" id="new-buyer-name" placeholder="e.g. John" />
-        <div class="inline-row">
-          <div>
-            <label>Cans Bought</label>
-            <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+        <div class="tab" onclick="switchTab('pay')">Payments</div>
+        <div class="tab" onclick="switchTab('admin')">Admin</div>
+      </div>
+
+      <!-- ── DASHBOARD ── -->
+      <div id="tab-dashboard" class="section active">
+
+        <!-- Buy Gas button -->
+        <button class="buy-gas-btn" onclick="openModal()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 22V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/>
+            <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0"/>
+            <line x1="3" y1="22" x2="17" y2="22"/>
+            <line x1="7" y1="10" x2="11" y2="10"/>
+          </svg>
+          Log Gas Purchase
+        </button>
+
+        <!-- Gas Supply -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 22V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v14"/>
+              <path d="M14 10h2c1.1 0 2 .9 2 2v1c0 1.1.9 2 2 2"/>
+              <line x1="4" y1="22" x2="18" y2="22"/>
+              <rect x="6" y="10" width="6" height="4" rx="1"/>
+            </svg>
+            Gas Supply
           </div>
-          <div>
-            <label>Venmo Handle</label>
-            <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
+          <hr class="ruled-line">
+          <div id="dash-buyers"><div class="loading"><span class="spinner"></span>loading...</div></div>
+        </div>
+
+        <!-- Today's Usage -->
+        <div class="card">
+          <div class="card-title">
+            <!-- Odometer sketch icon -->
+            <svg width="22" height="14" viewBox="0 0 120 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="112" height="52" rx="10"/>
+              <rect x="12" y="10" width="28" height="40" rx="3"/>
+              <text x="26" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
+              <rect x="46" y="10" width="28" height="40" rx="3"/>
+              <text x="60" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
+              <rect x="80" y="10" width="28" height="40" rx="3"/>
+              <text x="94" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
+              <line x1="12" y1="30" x2="108" y2="30" stroke-width="1.5" stroke-dasharray="2,3"/>
+            </svg>
+            Today's Usage
+          </div>
+          <hr class="ruled-line">
+          <div id="dash-log"><div class="loading"><span class="spinner"></span>loading...</div></div>
+        </div>
+      </div>
+
+      <!-- ── PAYMENTS ── -->
+      <div id="tab-pay" class="section">
+        <div class="card-title" style="margin-bottom:6px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="6" width="20" height="14" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
+            <line x1="7" y1="15" x2="10" y2="15"/>
+          </svg>
+          What's Owed
+        </div>
+        <hr class="ruled-line">
+        <div id="payment-list"><div class="loading"><span class="spinner"></span>loading...</div></div>
+      </div>
+
+      <!-- ── ADMIN ── -->
+      <div id="tab-admin" class="section">
+        <div class="card-title" style="margin-bottom:6px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Settings
+        </div>
+        <hr class="ruled-line">
+
+        <!-- Price -->
+        <div class="card">
+          <div style="font-family:'Patrick Hand',cursive;font-size:13px;color:var(--pencil-faint);margin-bottom:4px">Price per gallon ($)</div>
+          <input type="number" id="admin-price" placeholder="3.50" step="0.01" min="0" style="max-width:120px"/>
+          <button class="btn btn-outline" style="width:auto;display:inline-block;padding:5px 16px;font-size:16px;margin-left:10px;margin-top:0;vertical-align:bottom" onclick="saveSettings()">save</button>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Buyers -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div class="card-title" style="margin-bottom:0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Buyers
+            </div>
+            <button onclick="toggleAddBuyer()" id="add-buyer-toggle" style="background:none;border:none;cursor:pointer;color:var(--pencil);font-family:'Caveat',cursive;font-size:26px;line-height:1;padding:0 4px">+</button>
+          </div>
+          <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>loading...</div></div>
+          <div id="add-buyer-form" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(44,36,22,0.2)">
+            <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:var(--pencil-faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">add new buyer</div>
+            <label>Name</label>
+            <input type="text" id="new-buyer-name" placeholder="e.g. John" />
+            <div class="inline-row">
+              <div>
+                <label>Cans Bought</label>
+                <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
+              </div>
+              <div>
+                <label>Venmo Handle</label>
+                <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
+              </div>
+            </div>
+            <label>Phone (Apple Pay, optional)</label>
+            <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
+            <button class="btn btn-primary" onclick="addBuyer()" style="margin-top:10px">Add Buyer</button>
           </div>
         </div>
-        <label>Phone (Apple Pay, optional)</label>
-        <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
-        <button class="btn btn-primary" onclick="addBuyer()">Add Buyer</button>
+
+        <hr class="section-divider">
+
+        <!-- QR Codes -->
+        <div class="card qr-print-card">
+          <div class="card-title" style="margin-bottom:4px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+              <rect x="14" y="14" width="3" height="3"/>
+              <rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/>
+              <rect x="18" y="18" width="3" height="3"/>
+            </svg>
+            QR Codes
+          </div>
+          <div style="font-family:'Patrick Hand',cursive;font-size:11px;color:var(--pencil-faint);margin-bottom:10px">Print and stick on each gas can</div>
+          <div id="qr-grid" class="qr-grid"><div class="loading"><span class="spinner"></span>loading...</div></div>
+          <button class="btn btn-outline" style="margin-top:10px;font-size:15px" onclick="window.print()">print QR codes</button>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Danger Zone -->
+        <div class="card">
+          <div class="card-title" style="color:var(--pencil-faint);font-size:15px;margin-bottom:6px">danger zone</div>
+          <button class="btn btn-outline" style="color:var(--pencil-faint);font-size:15px;border-style:dashed" onclick="resetDay()">reset today's usage</button>
+          <button class="btn btn-danger" style="font-size:15px" onclick="clearAll()">reset all data</button>
+        </div>
       </div>
-    </div>
 
+    </div><!-- /paper -->
+  </div><!-- /paper-stack -->
+</div><!-- /clipboard-board -->
+</div><!-- /main-app -->
 
-    <div class="card qr-print-card">
-      <div class="card-title">QR Codes for Gas Cans</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Each QR code links directly to the log form with that buyer pre-selected. Print and stick on the gas cans.</p>
-      <div id="qr-grid" class="qr-grid"><div class="loading"><span class="spinner"></span>Loading...</div></div>
-      <button class="btn btn-outline" style="margin-top:12px" onclick="window.print()">🖨️ Print QR Codes</button>
+<!-- BUY GAS MODAL -->
+<div id="buy-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px">
+          <path d="M3 22V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/>
+          <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2"/>
+          <line x1="3" y1="22" x2="17" y2="22"/>
+          <line x1="7" y1="10" x2="11" y2="10"/>
+        </svg>Log Gas Purchase
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
     </div>
-    <div class="card">
-      <div class="card-title">Danger Zone</div>
-      <button class="btn btn-outline" style="color:var(--muted);border-style:dashed" onclick="resetDay()">🔄 Reset Today's Usage</button>
-      <button class="btn btn-danger" onclick="clearAll()">🗑️ Clear All Usage Data</button>
+    <label>Your Name</label>
+    <input type="text" id="log-name" placeholder="your name" />
+    <label>Whose gas?</label>
+    <select id="log-buyer">
+      <option value="">— pick a buyer —</option>
+    </select>
+    <label>How many cans?</label>
+    <div class="can-btns" id="can-btns">
+      <button class="can-btn" onclick="selectCans(1)">1</button>
+      <button class="can-btn" onclick="selectCans(2)">2</button>
+      <button class="can-btn" onclick="selectCans(3)">3</button>
+      <button class="can-btn" onclick="selectCans(4)">4</button>
+      <button class="can-btn" onclick="selectCans(5)">5</button>
     </div>
+    <input type="hidden" id="log-cans" value="" />
+    <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Log It</button>
   </div>
 </div>
 
@@ -250,15 +1046,15 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 let sb = null;
 let settings = { startingCans: 10, pricePerGallon: 3.50 };
-let buyers = []; // array of { id, name, cans_bought, venmo_handle, phone }
+let buyers = [];
+
+// Set date in header
+document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
 // ---- INIT ----
 async function init() {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   document.getElementById('main-app').style.display = 'block';
-  const savedName = localStorage.getItem('gas_user_name');
-  if (savedName) document.getElementById('log-name').value = savedName;
-
   await Promise.all([loadSettings(), loadBuyers()]);
   renderDashboard();
   subscribeRealtime();
@@ -269,31 +1065,20 @@ function checkURLParams() {
   const params = new URLSearchParams(window.location.search);
   const buyerId = params.get('buyer');
   if (buyerId) {
-    // Jump to log tab with buyer pre-selected
-    switchTab('log');
-    // Wait for populateBuyerSelect to finish then set value
-    setTimeout(() => {
-      const sel = document.getElementById('log-buyer');
-      sel.value = buyerId;
-      // Show a helpful banner
+    openModal().then(() => {
+      document.getElementById('log-buyer').value = buyerId;
       const buyer = buyers.find(b => String(b.id) === String(buyerId));
-      if (buyer) {
-        showToast('⛽ Logging from ' + buyer.name + '\'s can');
-        // Scroll to name field
-        document.getElementById('log-name').focus();
-      }
-    }, 300);
+      if (buyer) { showToast('logging from ' + buyer.name + "'s can"); document.getElementById('log-name').focus(); }
+    });
   }
 }
 
 function subscribeRealtime() {
   sb.channel('gas_tracker')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => {
-      renderDashboard(); renderPayments(); populateBuyerSelect();
-    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => { renderDashboard(); renderPayments(); populateBuyerSelect(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
-      loadBuyers().then(() => { renderDashboard(); renderAdminBuyers(); populateBuyerSelect(); renderPayments(); });
+      loadBuyers().then(() => { renderDashboard(); renderAdminBuyers(); populateBuyerSelect(); renderPayments(); renderQRCodes(); });
     })
     .subscribe();
 }
@@ -301,18 +1086,16 @@ function subscribeRealtime() {
 // ---- SETTINGS ----
 async function loadSettings() {
   const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
-  if (data) {
-    settings = { startingCans: data.starting_cans || 10, pricePerGallon: parseFloat(data.price_per_gallon) || 3.50 };
-  }
+  if (data) settings = { startingCans: data.starting_cans || 10, pricePerGallon: parseFloat(data.price_per_gallon) || 3.50 };
 }
 
 async function saveSettings() {
   const price = parseFloat(document.getElementById('admin-price').value);
-  if (isNaN(price) || price < 0) { showToast('⚠️ Enter a valid price', true); return; }
+  if (isNaN(price) || price < 0) { showToast('enter a valid price', true); return; }
   const { error } = await sb.from('settings').upsert({ id: 1, price_per_gallon: price });
-  if (error) { showToast('❌ ' + error.message, true); return; }
+  if (error) { showToast('error: ' + error.message, true); return; }
   settings.pricePerGallon = price;
-  showToast('✅ Price saved!');
+  showToast('price saved!');
   renderDashboard();
 }
 
@@ -327,48 +1110,39 @@ async function addBuyer() {
   const cans = parseInt(document.getElementById('new-buyer-cans').value);
   const venmo = document.getElementById('new-buyer-venmo').value.trim().replace('@', '');
   const phone = document.getElementById('new-buyer-phone').value.trim();
-  if (!name) { showToast('⚠️ Enter buyer name', true); return; }
-  if (!cans || cans < 1) { showToast('⚠️ Enter cans bought', true); return; }
+  if (!name) { showToast('enter a name', true); return; }
+  if (!cans || cans < 1) { showToast('enter cans bought', true); return; }
   const { error } = await sb.from('gas_buyers').insert({ name, cans_bought: cans, venmo_handle: venmo || null, phone: phone || null });
-  if (error) { showToast('❌ ' + error.message, true); return; }
+  if (error) { showToast('error: ' + error.message, true); return; }
   document.getElementById('new-buyer-name').value = '';
   document.getElementById('new-buyer-cans').value = '';
   document.getElementById('new-buyer-venmo').value = '';
   document.getElementById('new-buyer-phone').value = '';
-  showToast('✅ Buyer added!');
-  await loadBuyers();
-  renderAdminBuyers();
-  await populateBuyerSelect();
-  renderDashboard();
+  showToast(name + ' added!');
+  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard();
 }
 
 async function deleteBuyer(id) {
-  if (!confirm('Remove this buyer and all their usage entries?')) return;
-  // Delete associated entries first to avoid FK constraint error
-  const { error: entryErr } = await sb.from('gas_entries').delete().eq('buyer_id', id);
-  if (entryErr) { showToast('❌ ' + entryErr.message, true); return; }
+  if (!confirm('remove this buyer and their entries?')) return;
+  await sb.from('gas_entries').delete().eq('buyer_id', id);
   const { error } = await sb.from('gas_buyers').delete().eq('id', id);
-  if (error) { showToast('❌ ' + error.message, true); return; }
-  showToast('🗑️ Buyer removed');
-  await loadBuyers();
-  renderAdminBuyers();
-  await populateBuyerSelect();
-  renderDashboard();
+  if (error) { showToast('error: ' + error.message, true); return; }
+  showToast('buyer removed');
+  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard();
 }
 
 async function addCans(id, currentTotal) {
-  const newTotal = currentTotal + 1;
-  const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
-  if (error) { showToast('❌ ' + error.message, true); return; }
+  const { error } = await sb.from('gas_buyers').update({ cans_bought: currentTotal + 1 }).eq('id', id);
+  if (error) { showToast('error: ' + error.message, true); return; }
   await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
 }
 
 async function removeCans(id, currentTotal, usedSoFar) {
   const newTotal = currentTotal - 1;
-  if (newTotal < usedSoFar) { showToast('⚠️ Can\'t go below cans already used (' + usedSoFar + ')', true); return; }
-  if (newTotal < 1) { showToast('⚠️ Must have at least 1 can', true); return; }
+  if (newTotal < usedSoFar) { showToast("can't go below used (" + usedSoFar + ')', true); return; }
+  if (newTotal < 1) { showToast('must have at least 1', true); return; }
   const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
-  if (error) { showToast('❌ ' + error.message, true); return; }
+  if (error) { showToast('error: ' + error.message, true); return; }
   await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
 }
 
@@ -383,47 +1157,35 @@ function toggleAddBuyer() {
 async function populateBuyerSelect() {
   const sel = document.getElementById('log-buyer');
   const current = sel.value;
-  sel.innerHTML = '<option value="">— Select buyer —</option>';
-
-  // Check total cans used per buyer across all entries
+  sel.innerHTML = '<option value="">— pick a buyer —</option>';
   const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
-  (allEntries || []).forEach(e => {
-    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
-  });
-
+  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
   buyers.forEach(b => {
-    const used = usedPerBuyer[b.id] || 0;
-    const remaining = b.cans_bought - used;
-    if (remaining <= 0) return; // fully used up — hide from dropdown
+    const remaining = b.cans_bought - (usedPerBuyer[b.id] || 0);
+    if (remaining <= 0) return;
     const opt = document.createElement('option');
     opt.value = b.id;
-    opt.textContent = `${b.name} (${remaining} can${remaining !== 1 ? 's' : ''} left)`;
+    opt.textContent = b.name + ' (' + remaining + ' can' + (remaining !== 1 ? 's' : '') + ' left)';
     sel.appendChild(opt);
   });
-
   if (current) sel.value = current;
 }
 
 async function renderAdminBuyers() {
   const el = document.getElementById('admin-buyers-list');
+  document.getElementById('admin-price').value = settings.pricePerGallon;
   if (buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state" style="padding:16px 0"><span>&#128100;</span>No buyers added yet</div>';
-    document.getElementById('admin-price').value = settings.pricePerGallon;
-    // Auto-open the add form when there are no buyers
+    el.innerHTML = '<div class="empty-state" style="padding:10px 0">no buyers yet</div>';
     const form = document.getElementById('add-buyer-form');
     const btn = document.getElementById('add-buyer-toggle');
-    if (form) { form.style.display = 'block'; }
-    if (btn) { btn.textContent = '−'; }
+    if (form) form.style.display = 'block';
+    if (btn) btn.textContent = '−';
     return;
   }
-
   const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
-  (allEntries || []).forEach(e => {
-    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
-  });
-
+  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
   el.innerHTML = buyers.map(b => {
     const used = usedPerBuyer[b.id] || 0;
     const remaining = Math.max(0, b.cans_bought - used);
@@ -432,53 +1194,48 @@ async function renderAdminBuyers() {
     <div class="buyer-item">
       <div style="flex:1">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="buyer-name" style="${depleted ? 'color:var(--muted)' : ''}">${b.name} ${depleted ? '<span style="font-size:11px;color:var(--red);margin-left:4px">depleted</span>' : ''}</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="buyer-cans" style="${depleted ? 'color:var(--muted)' : ''}">${remaining}/${b.cans_bought}</div>
-            <button class="btn-icon" style="color:var(--accent);border-color:var(--accent)" onclick="addCans(${b.id}, ${b.cans_bought})" title="Add cans">+</button>
-            <button class="btn-icon" style="color:var(--muted);border-color:var(--muted)" onclick="removeCans(${b.id}, ${b.cans_bought}, ${used})" title="Remove cans">−</button>
-            <button class="btn-icon" onclick="deleteBuyer(${b.id})" title="Remove buyer">&#10005;</button>
+          <div class="buyer-name" style="${depleted ? 'color:var(--pencil-faint);text-decoration:line-through' : ''}">${b.name}${depleted ? ' <span style="font-size:11px;color:var(--red-ink);font-family:\'Patrick Hand\',cursive">(out)</span>' : ''}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="buyer-cans" style="${depleted ? 'color:var(--pencil-faint)' : ''}">${remaining}/${b.cans_bought}</div>
+            <button class="btn-icon" style="color:var(--pencil);border-color:var(--pencil)" onclick="addCans(${b.id}, ${b.cans_bought})">+</button>
+            <button class="btn-icon" style="color:var(--pencil-faint);border-color:var(--pencil-faint)" onclick="removeCans(${b.id}, ${b.cans_bought}, ${used})">−</button>
+            <button class="btn-icon" style="color:var(--red-ink);border-color:var(--red-ink)" onclick="deleteBuyer(${b.id})">✕</button>
           </div>
         </div>
-        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} spent${b.venmo_handle ? ' &middot; @' + b.venmo_handle : ''}</div>
+        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} total${b.venmo_handle ? ' · @' + b.venmo_handle : ''}</div>
       </div>
     </div>`;
   }).join('');
-
-  document.getElementById('admin-price').value = settings.pricePerGallon;
-
-  // Hide add form when buyers exist; only show if explicitly opened
   const form = document.getElementById('add-buyer-form');
   const btn = document.getElementById('add-buyer-toggle');
-  if (form && form.style.display !== 'block') {
-    form.style.display = 'none';
-    if (btn) btn.textContent = '+';
-  }
+  if (form && form.style.display !== 'block') { form.style.display = 'none'; if (btn) btn.textContent = '+'; }
 }
 
 // ---- HELPERS ----
 function costPerCan() { return settings.pricePerGallon * 5; }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
-function fmtDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
 async function selectBuyerAndGo(buyerId) {
-  // Switch tab UI immediately
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab')[1].classList.add('active'); // log tab
-  document.getElementById('tab-log').classList.add('active');
-  // Restore saved name
+  await openModal();
+  document.getElementById('log-buyer').value = buyerId;
+}
+
+async function openModal() {
+  document.getElementById('buy-modal').style.display = 'block';
   const savedName = localStorage.getItem('gas_user_name');
   if (savedName && !document.getElementById('log-name').value) document.getElementById('log-name').value = savedName;
-  // Await the dropdown population then set the buyer
   await populateBuyerSelect();
-  document.getElementById('log-buyer').value = buyerId;
+}
+
+function closeModal() {
+  document.getElementById('buy-modal').style.display = 'none';
+  document.getElementById('log-cans').value = '';
+  document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
 }
 
 function selectCans(n) {
   document.getElementById('log-cans').value = n;
-  document.querySelectorAll('.can-btn').forEach((btn, i) => {
-    btn.classList.toggle('selected', i + 1 === n);
-  });
+  document.querySelectorAll('.can-btn').forEach((btn, i) => btn.classList.toggle('selected', i + 1 === n));
 }
 
 function showToast(msg, isError = false) {
@@ -492,17 +1249,10 @@ function showToast(msg, isError = false) {
 function switchTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  ['dashboard', 'log', 'pay', 'admin'].forEach((name, i) => {
-    if (name === id) document.querySelectorAll('.tab')[i].classList.add('active');
-  });
+  ['dashboard', 'pay', 'admin'].forEach((name, i) => { if (name === id) document.querySelectorAll('.tab')[i].classList.add('active'); });
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'dashboard') renderDashboard();
   if (id === 'pay') renderPayments();
-  if (id === 'log') {
-    populateBuyerSelect();
-    const savedName = localStorage.getItem('gas_user_name');
-    if (savedName && !document.getElementById('log-name').value) document.getElementById('log-name').value = savedName;
-  }
   if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
 }
 
@@ -512,27 +1262,38 @@ async function renderDashboard() {
   const { data: entries } = await sb.from('gas_entries').select('*').eq('entry_date', todayStr());
   const { data: allUsageEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
-  (allUsageEntries || []).forEach(e => {
-    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
-  });
+  (allUsageEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
 
-  // Gas supply — can icons per buyer (red=available, dark=used)
+  // Sketch-style gas can SVG (hand-drawn look with slightly wobbly stroke)
   const canSVG = (cls, buyerId) => {
     const clickable = cls === 'available' && buyerId;
     const onclick = clickable ? `onclick="selectBuyerAndGo(${buyerId})" style="cursor:pointer"` : '';
-    return `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="currentColor" xmlns="http://www.w3.org/2000/svg" ${onclick}>
-    <rect x="30" y="0" width="30" height="8" rx="4"/>
-    <rect x="33" y="7" width="24" height="8" rx="3"/>
-    <path fill-rule="evenodd" d="
-      M10 24 Q10 14 20 14 L70 14 Q80 14 80 24 L80 106 Q80 116 70 116 L20 116 Q10 116 10 106 Z
-      M58 28 Q72 28 72 42 L72 66 Q72 78 60 78 L58 78 Z
-    "/>
-  </svg>`;
+    // Sketch-style: uses stroke instead of fill for hand-drawn look
+    const strokeColor = cls === 'available' ? '#c0392b' : 'rgba(44,36,22,0.18)';
+    return `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="none" xmlns="http://www.w3.org/2000/svg" ${onclick} stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="30" y="2" width="30" height="9" rx="3"/>
+      <rect x="33" y="9" width="24" height="8" rx="2"/>
+      <path d="M12 26 Q11 16 22 16 L68 16 Q79 15 79 26 L80 104 Q80 115 69 116 L21 116 Q11 116 11 105 Z"/>
+      <path d="M60 29 Q73 30 72 43 L72 67 Q71 79 61 79 L60 79"/>
+    </svg>`;
   };
 
   const buyersEl = document.getElementById('dash-buyers');
   if (buyers.length === 0) {
-    buyersEl.innerHTML = '<div class="empty-state" style="padding:12px 0"><span>&#128100;</span>No buyers added yet — go to Admin</div>';
+    // Fuel gauge SVG (sketch style)
+    buyersEl.innerHTML = `<div class="empty-state" style="padding:16px 0">
+      <svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172.71 78" width="110" height="50" style="display:block;margin:0 auto 10px;opacity:0.35">
+        <defs><style>.cls-1{fill:#2c2416;stroke-width:0px;}</style></defs>
+        <path class="cls-1" d="M26.12,67.5h-7c0-8.9,1.71-17.55,5.07-25.71l6.47,2.67c-3.01,7.31-4.54,15.06-4.54,23.04Z"/>
+        <path class="cls-1" d="M33.35,38.79l-6.16-3.33c6.95-12.87,18.1-23.31,31.39-29.38l2.91,6.37c-11.91,5.45-21.91,14.8-28.14,26.34ZM139.86,38.75c-6.24-11.54-16.24-20.88-28.16-26.32l2.91-6.37c13.29,6.06,24.45,16.49,31.41,29.36l-6.16,3.33ZM67.32,10.14l-2.23-6.63c6.92-2.33,14.16-3.51,21.53-3.51s14.57,1.17,21.47,3.49l-2.23,6.64c-6.18-2.07-12.66-3.12-19.25-3.12s-13.1,1.06-19.3,3.14Z"/>
+        <path class="cls-1" d="M154.12,67.5h-7c0-7.98-1.53-15.73-4.54-23.04l6.47-2.67c3.37,8.16,5.07,16.81,5.07,25.71Z"/>
+        <path class="cls-1" d="M12.82,50.86v3.17H3.77v3.67h8.3v2.93H3.77v4.2h9.24v3.17H0v-17.14h12.82Z"/>
+        <path class="cls-1" d="M172.71,50.86v3.17h-8.28v3.96h7.18v2.93h-7.18v7.08h-3.77v-17.14h12.05Z"/>
+        <polygon class="cls-1" points="86.62 72 33.12 67.5 86.62 62 86.62 72"/>
+        <circle class="cls-1" cx="86.12" cy="67" r="11"/>
+      </svg>
+      <span style="font-family:'Patrick Hand',cursive">We're on E. Add cans in the Admin tab</span>
+    </div>`;
   } else {
     buyersEl.innerHTML = buyers.map(b => {
       const used = usedPerBuyer[b.id] || 0;
@@ -542,11 +1303,11 @@ async function renderDashboard() {
         canSVG(i < remaining ? 'available' : 'used', i < remaining ? b.id : null)
       ).join('');
       return `
-        <div class="buyer-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div class="buyer-item" style="flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-            <div class="buyer-name" style="${depleted ? 'color:var(--muted);text-decoration:line-through' : ''}">${b.name}</div>
-            <div style="font-size:12px;color:${depleted ? 'var(--muted)' : 'var(--text)'}">
-              ${used}/${b.cans_bought} used &middot; $${(used * costPerCan()).toFixed(2)} owed
+            <div class="buyer-name" style="${depleted ? 'color:var(--pencil-faint);text-decoration:line-through' : ''}">${b.name}</div>
+            <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:${depleted ? 'var(--pencil-faint)' : 'var(--pencil-light)'}">
+              ${used}/${b.cans_bought} used · $${(used * costPerCan()).toFixed(2)} owed
             </div>
           </div>
           <div class="can-grid">${cans}</div>
@@ -555,22 +1316,45 @@ async function renderDashboard() {
   }
 
   // Today's usage
+  const personSVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-right:8px;margin-top:2px"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`;
   const logEl = document.getElementById('dash-log');
   if (!entries || entries.length === 0) {
-    logEl.innerHTML = '<div class="empty-state"><span>⛽</span>No usage logged yet today</div>';
+    logEl.innerHTML = `<div class="empty-state">
+      <svg width="80" height="36" viewBox="0 0 120 54" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 8px;opacity:0.4" stroke="var(--pencil)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="112" height="46" rx="10"/>
+        <rect x="12" y="10" width="28" height="34" rx="3"/>
+        <text x="26" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
+        <rect x="46" y="10" width="28" height="34" rx="3"/>
+        <text x="60" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
+        <rect x="80" y="10" width="28" height="34" rx="3"/>
+        <text x="94" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
+        <line x1="12" y1="27" x2="108" y2="27" stroke-width="1.5" stroke-dasharray="3,4"/>
+      </svg>
+      <span>nothing logged yet today</span>
+    </div>`;
   } else {
     logEl.innerHTML = entries.map(e => {
       const buyer = buyers.find(b => b.id === e.buyer_id);
+      const cost = e.cans * costPerCan();
+      const note = encodeURIComponent('Gas - ' + e.cans + ' can' + (e.cans !== 1 ? 's' : ''));
+      const venmoDeepLink = buyer && buyer.venmo_handle
+        ? 'venmo://paycharge?txn=pay&recipients=' + buyer.venmo_handle + '&amount=' + cost.toFixed(2) + '&note=' + note : null;
+      const venmoWebLink = buyer && buyer.venmo_handle
+        ? 'https://venmo.com/' + buyer.venmo_handle + '?txn=pay&amount=' + cost.toFixed(2) + '&note=' + note : null;
+      const payBtn = !e.paid && venmoDeepLink
+        ? `<a href="${venmoDeepLink}" onclick="setTimeout(()=>{window.open('${venmoWebLink}','_blank')},500);return true;" class="btn btn-sm btn-venmo">pay</a>` : '';
       return `
         <div class="log-item">
-          <div>
+          ${personSVG}
+          <div style="flex:1">
             <div class="log-user">${e.user_name}</div>
             <div class="log-detail">${buyer ? '→ ' + buyer.name : ''}</div>
+            ${payBtn}
           </div>
-          <div style="text-align:right">
+          <div style="text-align:right;flex-shrink:0">
             <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
-            <div class="log-cost">$${(e.cans * costPerCan()).toFixed(2)}</div>
-            ${e.paid ? '<div class="log-paid">✓ PAID</div>' : ''}
+            <div class="log-cost">$${cost.toFixed(2)}</div>
+            ${e.paid ? '<div class="log-paid">✓ paid</div>' : ''}
           </div>
         </div>`;
     }).join('');
@@ -582,52 +1366,38 @@ async function logUsage() {
   const name = document.getElementById('log-name').value.trim();
   const buyerId = document.getElementById('log-buyer').value;
   const cans = parseInt(document.getElementById('log-cans').value);
-  const date = todayStr();
-  const notes = null;
-
-  if (!name) { showToast('⚠️ Enter your name', true); return; }
-  if (!buyerId) { showToast('⚠️ Select who supplied the gas', true); return; }
-  if (!cans || cans < 1) { showToast('⚠️ Enter valid can count', true); return; }
-
-  // Check how many cans this buyer has left (all time)
+  if (!name) { showToast('write your name first', true); return; }
+  if (!buyerId) { showToast('pick a buyer', true); return; }
+  if (!cans || cans < 1) { showToast('select number of cans', true); return; }
   const buyer = buyers.find(b => b.id == buyerId);
   const { data: buyerEntries } = await sb.from('gas_entries').select('cans').eq('buyer_id', buyerId);
   const usedFromBuyer = (buyerEntries || []).reduce((s, e) => s + e.cans, 0);
   const remainingFromBuyer = buyer.cans_bought - usedFromBuyer;
-  if (cans > remainingFromBuyer) {
-    showToast(`⚠️ ${buyer.name} only has ${remainingFromBuyer} can${remainingFromBuyer !== 1 ? 's' : ''} left!`, true);
-    return;
-  }
-
+  if (cans > remainingFromBuyer) { showToast(buyer.name + ' only has ' + remainingFromBuyer + ' left!', true); return; }
   const btn = document.getElementById('log-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
-  const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: date, notes: notes || null, paid: false, buyer_id: parseInt(buyerId) });
-  btn.disabled = false; btn.textContent = 'Buy Gas';
-  if (error) { showToast('❌ ' + error.message, true); return; }
-
-  localStorage.setItem('gas_user_name', document.getElementById('log-name').value.trim());
+  btn.disabled = true; btn.textContent = 'saving...';
+  const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: todayStr(), notes: null, paid: false, buyer_id: parseInt(buyerId) });
+  btn.disabled = false; btn.textContent = 'Log It';
+  if (error) { showToast('error: ' + error.message, true); return; }
+  localStorage.setItem('gas_user_name', name);
   document.getElementById('log-name').value = '';
   document.getElementById('log-cans').value = '';
   document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
-  showToast('✅ Gas purchase logged!');
+  showToast('logged!');
+  closeModal();
   await populateBuyerSelect();
   renderDashboard();
 }
 
-
 // ---- PAYMENTS ----
-// Groups: for each buyer, show who owes them and how much
 async function renderPayments() {
   const el = document.getElementById('payment-list');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading…</div>';
-
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>loading...</div>';
   const { data: unpaid } = await sb.from('gas_entries').select('*').eq('paid', false);
   if (!unpaid || unpaid.length === 0 || buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state"><span>✅</span>All paid up!</div>';
+    el.innerHTML = '<div class="empty-state"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:block;margin:0 auto 8px;opacity:0.4"><polyline points="20 6 9 17 4 12"/></svg>all paid up!</div>';
     return;
   }
-
-  // Group by buyer_id → then by user_name
   const byBuyer = {};
   unpaid.forEach(e => {
     if (!byBuyer[e.buyer_id]) byBuyer[e.buyer_id] = {};
@@ -635,125 +1405,92 @@ async function renderPayments() {
     byBuyer[e.buyer_id][e.user_name].cans += e.cans;
     byBuyer[e.buyer_id][e.user_name].cost += e.cans * costPerCan();
   });
-
   let html = '';
   buyers.forEach(buyer => {
     const owers = byBuyer[buyer.id];
     if (!owers) return;
     const totalOwed = Object.values(owers).reduce((s, v) => s + v.cost, 0);
     const venmoBase = buyer.venmo_handle ? `https://venmo.com/${buyer.venmo_handle}?txn=pay` : null;
-
-    html += `<div class="card buyer-section">
+    html += `<div class="buyer-section">
       <div class="buyer-section-header">
         <div>
-          <div class="buyer-section-name">💰 Pay ${buyer.name}</div>
-          <div class="buyer-section-sub">${buyer.venmo_handle ? '@' + buyer.venmo_handle : 'No Venmo set'}</div>
+          <div class="buyer-section-name">Pay ${buyer.name}</div>
+          <div class="buyer-section-sub">${buyer.venmo_handle ? '@' + buyer.venmo_handle : 'no venmo set'}</div>
         </div>
         <div class="buyer-total">$${totalOwed.toFixed(2)}</div>
       </div>`;
-
     Object.entries(owers).forEach(([userName, { cans, cost }]) => {
       const note = encodeURIComponent(`Gas - ${cans} can${cans !== 1 ? 's' : ''}`);
-      // venmo:// opens the app on mobile; fallback href opens website if app not installed
-      const venmoDeepLink = buyer.venmo_handle
-        ? `venmo://paycharge?txn=pay&recipients=${buyer.venmo_handle}&amount=${cost.toFixed(2)}&note=${note}`
-        : null;
+      const venmoDeepLink = buyer.venmo_handle ? `venmo://paycharge?txn=pay&recipients=${buyer.venmo_handle}&amount=${cost.toFixed(2)}&note=${note}` : null;
       const venmoWebLink = venmoBase ? `${venmoBase}&amount=${cost.toFixed(2)}&note=${note}` : null;
-      const appleLink = buyer.phone ? `sms:${buyer.phone}&body=${encodeURIComponent(`Sending $${cost.toFixed(2)} for gas (${cans} cans) — Apple Pay`)}` : null;
-      html += `
-        <div class="ower-row">
-          <div>
-            <div class="ower-name">${userName}</div>
-            <div style="font-size:12px;color:var(--muted)">${cans} can${cans !== 1 ? 's' : ''} · ${cans * 5} gal</div>
-            <div class="pay-btns">
-              ${venmoDeepLink ? `<a href="${venmoDeepLink}" onclick="setTimeout(()=>{window.open('${venmoWebLink}','_blank')},500);return true;" class="btn btn-sm btn-venmo">💙 Venmo</a>` : ''}
-              ${appleLink ? `<a href="${appleLink}" class="btn btn-sm btn-apple"> Apple Pay</a>` : ''}
-              <button class="btn btn-sm btn-outline" onclick="markPaid('${userName.replace(/'/g,"\\'")}', ${buyer.id})">✓ Mark Paid</button>
-            </div>
+      const appleLink = buyer.phone ? `sms:${buyer.phone}&body=${encodeURIComponent('Sending $' + cost.toFixed(2) + ' for gas (' + cans + ' cans) — Apple Pay')}` : null;
+      html += `<div class="ower-row">
+        <div>
+          <div class="ower-name">${userName}</div>
+          <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:var(--pencil-faint)">${cans} can${cans !== 1 ? 's' : ''} · ${cans * 5} gal</div>
+          <div class="pay-btns">
+            ${venmoDeepLink ? `<a href="${venmoDeepLink}" onclick="setTimeout(()=>{window.open('${venmoWebLink}','_blank')},500);return true;" class="btn btn-sm btn-venmo">venmo</a>` : ''}
+            ${appleLink ? `<a href="${appleLink}" class="btn btn-sm btn-apple">apple pay</a>` : ''}
+            <button class="btn btn-sm btn-outline" onclick="markPaid('${userName.replace(/'/g,"\\'")}', ${buyer.id})">✓ mark paid</button>
           </div>
-          <div class="ower-amount">$${cost.toFixed(2)}</div>
-        </div>`;
+        </div>
+        <div class="ower-amount">$${cost.toFixed(2)}</div>
+      </div>`;
     });
-    html += `</div>`;
+    html += `</div><hr class="section-divider">`;
   });
-
-  el.innerHTML = html || '<div class="empty-state"><span>✅</span>All paid up!</div>';
+  el.innerHTML = html || '<div class="empty-state">all paid up!</div>';
 }
 
 async function markPaid(userName, buyerId) {
   const { error } = await sb.from('gas_entries').update({ paid: true }).eq('user_name', userName).eq('buyer_id', buyerId).eq('paid', false);
-  if (error) { showToast('❌ ' + error.message, true); return; }
-  showToast(`✅ ${userName} marked as paid`);
+  if (error) { showToast('error: ' + error.message, true); return; }
+  showToast(userName + ' marked paid');
   renderPayments();
 }
 
-// ---- ADMIN ----
+// ---- QR CODES ----
 async function renderQRCodes() {
   const el = document.getElementById('qr-grid');
   if (!el) return;
-
-  if (buyers.length === 0) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No buyers added yet — add buyers above first.</p>';
-    return;
-  }
-
+  if (buyers.length === 0) { el.innerHTML = '<p style="font-family:\'Patrick Hand\',cursive;color:var(--pencil-faint);font-size:12px;text-align:center;padding:8px 0">no buyers yet</p>'; return; }
   const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
   const usedPerBuyer = {};
-  (allEntries || []).forEach(e => {
-    usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans;
-  });
-
+  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
   const appUrl = window.location.href.split('?')[0];
   el.innerHTML = '';
-
   for (const b of buyers) {
     const used = usedPerBuyer[b.id] || 0;
     const remaining = Math.max(0, b.cans_bought - used);
     const depleted = remaining === 0;
-    const url = appUrl + '?buyer=' + b.id;
-
-    // Use Google Charts QR API — battle-tested, guaranteed scannable
-    // Use qrserver.com - reliable, no CSP issues, works on all devices
-    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&ecc=M&data=' + encodeURIComponent(url);
-
+    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&ecc=M&data=' + encodeURIComponent(appUrl + '?buyer=' + b.id);
     const div = document.createElement('div');
     div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
-    div.innerHTML = `
-      <img src="${qrSrc}" width="160" height="160" style="display:block;margin:0 auto 8px;border-radius:4px;background:#fff;padding:4px" alt="QR for ${b.name}" onerror="this.parentNode.querySelector('.qr-err').style.display='block';this.style.display='none'" />
-      <div class="qr-err" style="display:none;color:#e74c3c;font-size:11px;margin-bottom:8px">Failed to load — check internet</div>
+    div.innerHTML = `<img src="${qrSrc}" width="140" height="140" style="display:block;margin:0 auto 6px;background:#fff;padding:3px" alt="QR for ${b.name}" onerror="this.style.display='none'" />
       <div class="qr-buyer-name">${b.name}</div>
-      <div class="qr-cans">${depleted ? 'Depleted' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' remaining'}</div>
-    `;
+      <div class="qr-cans">${depleted ? 'out of gas' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' left'}</div>`;
     el.appendChild(div);
   }
 }
 
-
-function populateAdmin() {
-  document.getElementById('admin-price').value = settings.pricePerGallon;
-  renderAdminBuyers();
-  populateBuyerSelect();
-  renderQRCodes();
-}
-
 async function resetDay() {
-  if (!confirm("Delete all of today's entries?")) return;
+  if (!confirm("delete today's entries?")) return;
   const { error } = await sb.from('gas_entries').delete().eq('entry_date', todayStr());
-  if (error) { showToast('❌ ' + error.message, true); return; }
+  if (error) { showToast('error: ' + error.message, true); return; }
   renderDashboard();
-  showToast('🔄 Today reset');
+  showToast('today reset');
 }
 
 async function clearAll() {
-  if (!confirm('Delete ALL entries permanently? This cannot be undone.')) return;
-  const { error } = await sb.from('gas_entries').delete().gte('id', 0);
-  if (error) { showToast('❌ ' + error.message, true); return; }
-  renderDashboard();
-  renderRecentEntries();
-  showToast('🗑️ All data cleared');
+  if (!confirm('clear all usage entries and reset can counts to 0? buyers stay. cannot undo.')) return;
+  const { error: e1 } = await sb.from('gas_entries').delete().gte('id', 0);
+  if (e1) { showToast('error: ' + e1.message, true); return; }
+  const { error: e2 } = await sb.from('gas_buyers').update({ cans_bought: 0 }).gte('id', 0);
+  if (e2) { showToast('error: ' + e2.message, true); return; }
+  await loadBuyers(); renderDashboard(); renderAdminBuyers(); await populateBuyerSelect();
+  showToast('all data reset');
 }
 
-// ---- START ----
 init();
 </script>
 </body>
