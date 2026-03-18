@@ -1,1421 +1,612 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Der Gasser Upper</title>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<style>
-  :root {
-    --paper: #f4f0e8;
-    --paper-dark: #e8e3d5;
-    --paper-lines: #c8d4e8;
-    --clip: #b5882a;
-    --clip-dark: #8a6520;
-    --clip-shine: #e8c060;
-    --pencil: #2c2416;
-    --pencil-light: #5a4f3e;
-    --pencil-faint: #9a8f7e;
-    --red-ink: #c0392b;
-    --blue-ink: #2471a3;
-    --green-ink: #1e8449;
-    --rubber: #e8a090;
-    --wood: #8B5E3C;
-    --wood-dark: #6B4423;
-    --shadow: rgba(0,0,0,0.25);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #6b7c5a;
-    background-image:
-      radial-gradient(ellipse at 20% 20%, #7a8f6a 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, #5a6b4a 0%, transparent 50%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
-    padding: 0;
-    font-family: 'Caveat', cursive;
-  }
-
-  /* ── CLIPBOARD SHELL ── */
-  #main-app {
-    width: 100%;
-    max-width: 460px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-
-  /* Clipboard backing board */
-  .clipboard-board {
-    background: linear-gradient(160deg, #8B5E3C 0%, #6B4423 40%, #7a5230 100%);
-    border-radius: 0;
-    padding: 30px 14px 14px;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.15),
-      inset -2px 0 4px rgba(0,0,0,0.2),
-      inset 2px 0 4px rgba(0,0,0,0.1);
-    position: relative;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Wood grain texture overlay */
-  .clipboard-board::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background-image: repeating-linear-gradient(
-      92deg,
-      transparent 0px,
-      transparent 8px,
-      rgba(0,0,0,0.04) 8px,
-      rgba(0,0,0,0.04) 9px,
-      transparent 9px,
-      transparent 18px,
-      rgba(255,255,255,0.03) 18px,
-      rgba(255,255,255,0.03) 19px
-    );
-    pointer-events: none;
-  }
-
-  /* ── METAL CLIP ── */
-  .clip {
-    position: absolute;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px;
-    height: 70px;
-    z-index: 20;
-    /* clip-body overlaps top of paper */
-  }
-
-  .clip-body {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    top: 8px;
-    height: 55px;
-    background: linear-gradient(135deg, #d4a840 0%, #b8891e 30%, #e8c860 50%, #a07010 70%, #c89830 100%);
-    border-radius: 4px 4px 2px 2px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
-  }
-
-  .clip-spring {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    top: 0;
-    height: 28px;
-    background: linear-gradient(135deg, #c0902a 0%, #e0b040 40%, #a07820 60%, #d4a030 100%);
-    border-radius: 30px 30px 0 0;
-    border: 2px solid #907010;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
-  }
-
-  .clip-spring::after {
-    content: '';
-    position: absolute;
-    left: 8px; right: 8px; top: 6px; bottom: 4px;
-    border-radius: 20px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
-  }
-
-  .clip-hole {
-    position: absolute;
-    left: 50%; top: 50%;
-    transform: translate(-50%, -30%);
-    width: 18px; height: 22px;
-    background: var(--wood-dark);
-    border-radius: 2px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
-  }
-
-  /* ── PAPER STACK ── */
-  .paper-stack {
-    position: relative;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  /* Paper sheets peeking behind */
-  .paper-stack::before,
-  .paper-stack::after {
-    content: '';
-    position: absolute;
-    background: #ece8df;
-    border-radius: 0 0 3px 3px;
-    box-shadow: 1px 2px 4px rgba(0,0,0,0.15);
-  }
-  .paper-stack::before {
-    top: 3px; left: -4px; right: -3px; bottom: -3px;
-    transform: rotate(-1.2deg);
-    background: #e8e4db;
-  }
-  .paper-stack::after {
-    top: 2px; left: -2px; right: -4px; bottom: -2px;
-    transform: rotate(0.8deg);
-    background: #ede9e0;
-  }
-
-  /* Main paper sheet */
-  .paper {
-    position: relative;
-    z-index: 5;
-    background: var(--paper);
-    border-radius: 1px 1px 3px 3px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* No ruled lines or margin line — clean paper */
-
-
-
-  /* ── HEADER ON PAPER ── */
-  .paper-header {
-    padding: 38px 18px 10px 18px;
-    border-bottom: 1.5px solid rgba(192,57,43,0.2);
-    position: relative;
-  }
-
-  .paper-title {
-    font-family: 'Caveat', cursive;
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--pencil);
-    line-height: 1;
-    letter-spacing: -0.5px;
-    /* Slight hand-drawn wobble */
-    transform: rotate(-0.5deg);
-    display: inline-block;
-  }
-
-  .paper-subtitle {
-    font-family: 'Patrick Hand', cursive;
-    font-size: 12px;
-    color: var(--pencil-faint);
-    margin-top: 3px;
-    transform: rotate(-0.3deg);
-    display: inline-block;
-  }
-
-  /* Date stamp top right */
-  .paper-date {
-    position: absolute;
-    top: 22px; right: 14px;
-    font-family: 'Patrick Hand', cursive;
-    font-size: 11px;
-    color: var(--pencil-faint);
-    text-align: right;
-  }
-
-  /* ── TABS ── */
-  .tabs {
-    display: flex;
-    background: transparent;
-    border-bottom: 1.5px solid rgba(44,36,22,0.15);
-    position: sticky;
-    top: 0;
-    z-index: 15;
-    background: var(--paper);
-  }
-
-  .tab {
-    flex: 1;
-    padding: 10px 4px 8px;
-    text-align: center;
-    font-family: 'Caveat', cursive;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--pencil-faint);
-    cursor: pointer;
-    border-bottom: 2.5px solid transparent;
-    transition: all 0.15s;
-    letter-spacing: 0.2px;
-  }
-
-  .tab.active {
-    color: var(--pencil);
-    border-bottom-color: var(--pencil);
-  }
-
-  /* Underline squiggle effect on active tab */
-  .tab.active::after {
-    content: '';
-  }
-
-  /* ── SECTIONS ── */
-  .section { display: none; padding: 14px 16px 20px 16px; overflow-y: auto; flex: 1; }
-  .section.active { display: block; }
-
-  /* ── SECTION HEADINGS ── */
-  .section-label {
-    font-family: 'Caveat', cursive;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--pencil-faint);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 6px;
-    margin-top: 16px;
-  }
-  .section-label:first-child { margin-top: 4px; }
-
-  /* ── CARDS ── */
-  .card {
-    background: transparent;
-    margin-bottom: 16px;
-    position: relative;
-  }
-
-  .card-title {
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--pencil);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-
-  /* Horizontal rule drawn under section titles */
-  .ruled-line {
-    border: none;
-    border-bottom: 1px solid rgba(44,36,22,0.2);
-    margin: 0 0 10px 0;
-  }
-
-  /* ── INPUTS ── */
-  label {
-    display: block;
-    font-family: 'Patrick Hand', cursive;
-    font-size: 13px;
-    color: var(--pencil-faint);
-    margin-bottom: 3px;
-    margin-top: 10px;
-  }
-
-  input, select {
-    width: 100%;
-    background: transparent;
-    border: none;
-    border-bottom: 1.5px solid var(--pencil-light);
-    border-radius: 0;
-    color: var(--pencil);
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    padding: 4px 2px 3px;
-    margin-bottom: 4px;
-    outline: none;
-    transition: border-color 0.2s;
-    appearance: none;
-    -webkit-appearance: none;
-  }
-
-  input:focus, select:focus {
-    border-bottom-color: var(--pencil);
-  }
-
-  input::placeholder {
-    color: var(--pencil-faint);
-    opacity: 0.5;
-    font-size: 16px;
-  }
-
-  input[type=number] { -moz-appearance: textfield; }
-  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath fill='%235a4f3e' d='M5 7L0 0h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 4px center;
-    padding-right: 20px;
-    cursor: pointer;
-  }
-
-  select option { background: #f4f0e8; color: #2c2416; font-family: 'Caveat', cursive; }
-
-  /* ── BUTTONS ── */
-  .btn {
-    display: block;
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid var(--pencil);
-    border-radius: 2px;
-    background: transparent;
-    color: var(--pencil);
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.1s;
-    text-decoration: none;
-    text-align: center;
-    margin-top: 12px;
-    /* Sketch border - use box-shadow to simulate rough edges */
-    box-shadow: 1px 1px 0 rgba(44,36,22,0.3), inset 1px 1px 0 rgba(255,255,255,0.4);
-    position: relative;
-    letter-spacing: 0.3px;
-  }
-
-  /* Sketch-style button border wobble */
-  .btn::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border: 1px solid rgba(44,36,22,0.15);
-    border-radius: 2px;
-    transform: rotate(-0.3deg);
-  }
-
-  .btn:active { transform: translateY(1px); box-shadow: none; }
-
-  .btn-primary {
-    background: var(--pencil);
-    color: var(--paper);
-    border-color: var(--pencil);
-  }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-outline {
-    border-color: var(--pencil-faint);
-    color: var(--pencil-light);
-  }
-
-  .btn-danger {
-    border-color: var(--red-ink);
-    color: var(--red-ink);
-  }
-
-  .btn-sm {
-    display: inline-block;
-    width: auto;
-    padding: 4px 10px;
-    font-size: 14px;
-    margin-top: 6px;
-    margin-right: 4px;
-  }
-
-  .btn-venmo {
-    border-color: #2471a3;
-    color: #2471a3;
-    background: transparent;
-  }
-
-  .btn-apple {
-    border-color: var(--pencil);
-    color: var(--pencil);
-    background: transparent;
-  }
-
-  .btn-icon {
-    background: transparent;
-    border: 1.5px solid var(--pencil-faint);
-    color: var(--pencil);
-    border-radius: 2px;
-    padding: 3px 9px;
-    font-size: 16px;
-    cursor: pointer;
-    font-family: 'Caveat', cursive;
-    transition: all 0.1s;
-  }
-  .btn-icon:active { transform: scale(0.95); }
-
-  /* ── BUY GAS BUTTON ── */
-  .buy-gas-btn {
-    width: calc(100% + 32px);
-    margin-left: -16px;
-    padding: 13px 16px 12px 18px;
-    border: none;
-    border-top: 1.5px dashed rgba(44,36,22,0.2);
-    border-bottom: 1.5px dashed rgba(44,36,22,0.2);
-    background: rgba(44,36,22,0.04);
-    color: var(--pencil);
-    font-family: 'Caveat', cursive;
-    font-size: 22px;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-    transition: background 0.15s;
-    letter-spacing: 0.3px;
-  }
-  .buy-gas-btn:active { background: rgba(44,36,22,0.09); }
-
-  /* ── CAN NUMBER BUTTONS ── */
-  .can-btns { display: flex; gap: 8px; margin: 8px 0 12px; }
-
-  .can-btn {
-    flex: 1;
-    padding: 12px 0;
-    border: 1.5px solid var(--pencil-light);
-    border-radius: 2px;
-    background: transparent;
-    color: var(--pencil-light);
-    font-family: 'Caveat', cursive;
-    font-size: 26px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.1s;
-    position: relative;
-  }
-  .can-btn::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border: 1px solid rgba(44,36,22,0.1);
-    border-radius: 2px;
-    transform: rotate(-0.5deg);
-  }
-  .can-btn:active { transform: scale(0.96); }
-  .can-btn.selected {
-    background: var(--pencil);
-    color: var(--paper);
-    border-color: var(--pencil);
-  }
-
-  /* ── LOG ITEMS ── */
-  .log-item {
-    display: flex;
-    align-items: flex-start;
-    padding: 8px 0;
-    border-bottom: 1px dashed rgba(44,36,22,0.15);
-    gap: 8px;
-  }
-  .log-item:last-child { border-bottom: none; }
-
-  .log-user {
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--pencil);
-    line-height: 1.2;
-  }
-  .log-detail {
-    font-family: 'Patrick Hand', cursive;
-    font-size: 12px;
-    color: var(--pencil-faint);
-    margin-top: 1px;
-  }
-  .log-cans {
-    font-family: 'Caveat', cursive;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--pencil);
-    line-height: 1;
-  }
-  .log-cost {
-    font-family: 'Patrick Hand', cursive;
-    font-size: 12px;
-    color: var(--pencil-faint);
-  }
-  .log-paid {
-    font-family: 'Patrick Hand', cursive;
-    font-size: 11px;
-    color: var(--green-ink);
-    font-weight: 600;
-  }
-
-  /* ── BUYER ITEMS ── */
-  .buyer-item {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px dashed rgba(44,36,22,0.15);
-  }
-  .buyer-item:last-child { border-bottom: none; }
-  .buyer-name {
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--pencil);
-  }
-  .buyer-meta {
-    font-family: 'Patrick Hand', cursive;
-    font-size: 12px;
-    color: var(--pencil-faint);
-    margin-top: 2px;
-  }
-  .buyer-cans {
-    font-family: 'Caveat', cursive;
-    font-size: 20px;
-    color: var(--pencil);
-  }
-
-  /* ── CAN ICONS (sketch style) ── */
-  .can-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0; }
-  .can-icon { width: 26px; height: 34px; flex-shrink: 0; }
-  .can-icon.available { color: var(--red-ink); }
-  .can-icon.used { color: rgba(44,36,22,0.18); }
-
-  /* ── PAYMENT SECTION ── */
-  .buyer-section { margin-bottom: 16px; }
-  .buyer-section-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 0 8px; border-bottom: 1.5px solid rgba(44,36,22,0.2); margin-bottom: 4px; }
-  .buyer-section-name { font-family: 'Caveat', cursive; font-weight: 700; font-size: 20px; color: var(--pencil); }
-  .buyer-section-sub { font-family: 'Patrick Hand', cursive; font-size: 12px; color: var(--pencil-faint); }
-  .buyer-total { font-family: 'Caveat', cursive; font-size: 28px; color: var(--red-ink); font-weight: 700; }
-  .ower-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed rgba(44,36,22,0.12); }
-  .ower-row:last-child { border-bottom: none; }
-  .ower-name { font-family: 'Caveat', cursive; font-size: 17px; color: var(--pencil); font-weight: 600; }
-  .ower-amount { font-family: 'Caveat', cursive; font-size: 20px; color: var(--blue-ink); font-weight: 700; }
-  .pay-btns { display: flex; gap: 5px; flex-wrap: wrap; }
-
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    color: var(--pencil-faint);
-    padding: 20px 0;
-    font-family: 'Patrick Hand', cursive;
-    font-size: 13px;
-  }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--pencil);
-    color: var(--paper);
-    font-family: 'Caveat', cursive;
-    font-size: 16px;
-    padding: 10px 22px;
-    border-radius: 2px;
-    transition: transform 0.3s;
-    z-index: 300;
-    white-space: nowrap;
-    box-shadow: 2px 3px 0 rgba(0,0,0,0.3);
-  }
-  .toast::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 2px;
-    transform: rotate(-0.4deg);
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.error { background: var(--red-ink); }
-
-  /* ── LOADING ── */
-  .loading {
-    text-align: center;
-    color: var(--pencil-faint);
-    padding: 16px;
-    font-family: 'Patrick Hand', cursive;
-    font-size: 13px;
-  }
-
-  .spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid rgba(44,36,22,0.2);
-    border-top-color: var(--pencil);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle;
-    margin-right: 6px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── QR CODES ── */
-  .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
-  .qr-card { background: rgba(255,255,255,0.6); border: 1.5px solid rgba(44,36,22,0.2); border-radius: 2px; padding: 10px; text-align: center; min-width: 0; overflow: hidden; }
-  .qr-buyer-name { font-family: 'Caveat', cursive; font-weight: 700; font-size: 14px; margin-bottom: 2px; color: var(--pencil); }
-  .qr-cans { font-family: 'Patrick Hand', cursive; font-size: 11px; color: var(--pencil-faint); }
-  .qr-depleted { opacity: 0.4; }
-
-  /* ── MODAL ── */
-  #buy-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
-  }
-
-  .modal-sheet {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    max-width: 460px;
-    margin: 0 auto;
-    background: var(--paper);
-    border-radius: 4px 4px 0 0;
-    padding: 20px 16px 36px 16px;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-
-  .modal-title {
-    font-family: 'Caveat', cursive;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--pencil);
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    font-size: 26px;
-    color: var(--pencil-faint);
-    cursor: pointer;
-    font-family: 'Caveat', cursive;
-    line-height: 1;
-    padding: 2px 6px;
-  }
-
-  /* ── INLINE ROW ── */
-  .inline-row { display: flex; gap: 16px; }
-  .inline-row > div { flex: 1; }
-
-  /* ── TALLY MARKS (for counts) ── */
-  .tally {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-
-
-  /* ── PAPER CLIP DECO ── */
-  .paper-note {
-    background: rgba(255,255,0,0.15);
-    border-left: 3px solid rgba(192,57,43,0.3);
-    padding: 4px 8px;
-    margin: 6px 0;
-    font-family: 'Patrick Hand', cursive;
-    font-size: 12px;
-    color: var(--pencil-faint);
-    font-style: italic;
-  }
-
-  .inline-row label { margin-top: 0; }
-
-  /* Section divider line */
-  .section-divider {
-    border: none;
-    border-bottom: 1px dashed rgba(44,36,22,0.2);
-    margin: 12px 0 12px 0;
-  }
-
-  @media print {
-    body { background: white; padding: 0; }
-    .clipboard-board { box-shadow: none; background: white; padding-top: 20px; }
-    .clip, .paper-stack::before, .paper-stack::after { display: none; }
-    header, .tabs, #tab-dashboard, #tab-pay { display: none !important; }
-    #tab-admin .card:not(.qr-print-card) { display: none !important; }
-    .qr-card { background: white; border: 1px solid #ccc; break-inside: avoid; }
-    .section { display: block !important; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Riesentöter PCA – Eastern Pennsylvania Region</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: #fff; color: #000; overflow-x: hidden; }
+
+    /* ── HEADER ── */
+    .header { width: 100%; background: #fff; }
+    .header-inner {
+      display: flex; align-items: center; gap: 60px;
+      padding: 10px 40px; height: 87px;
+    }
+    .logo { display: flex; align-items: center; gap: 8px; width: 225px; flex-shrink: 0; }
+    .logo img { width: 39px; height: 37px; display: block; }
+    .logo-text {
+      display: flex; flex-direction: column; gap: 5px;
+      justify-content: center; text-transform: uppercase; text-align: center;
+      height: 31px;
+    }
+    .logo-name {
+      font-family: 'Rajdhani', sans-serif; font-weight: 600;
+      font-size: 28px; color: #961a1b; line-height: normal;
+      height: 19px; display: flex; align-items: center;
+    }
+    .logo-sub {
+      font-family: 'Rajdhani', sans-serif; font-weight: 400;
+      font-size: 11px; letter-spacing: 1.19px; color: #000;
+      line-height: 13.782px; height: 7px; display: flex; align-items: center;
+    }
+    nav { display: flex; align-items: center; justify-content: space-between; flex: 1; }
+    nav a {
+      font-size: 16px; letter-spacing: 0.5px; color: #052175;
+      text-decoration: none; font-weight: 400; white-space: nowrap;
+    }
+    nav a.active { font-weight: 700; color: #961a1b; display: flex; flex-direction: column; gap: 5px; }
+    nav a.active::after { content: ''; height: 2px; background: #961a1b; display: block; }
+    .header-stripe {
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .stripe-red { background: #961a1b; height: 2px; }
+    .stripe-blue { background: #052175; height: 8px; }
+
+    /* ── HERO ── */
+    .hero { position: relative; width: 100%; height: 480px; overflow: hidden; background: #000; }
+    .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .hero-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(-90deg, rgba(0,0,0,0) 29%, rgba(0,0,0,0.55) 100%);
+    }
+    .hero-content {
+      position: absolute; left: 67px; top: 0; bottom: 0;
+      display: flex; flex-direction: column; justify-content: center; gap: 40px;
+      width: 600px;
+    }
+    .hero-text { display: flex; flex-direction: column; gap: 10px; color: #fff; }
+    .hero-title { font-size: 60px; font-weight: 700; line-height: 72px; letter-spacing: 0.5px; }
+    .hero-desc { font-size: 18px; font-weight: 500; letter-spacing: 0.5px; line-height: 1.5; }
+    .btn-member {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 20px; background: #fff;
+      border: 1px solid #000; color: #052175;
+      font-size: 18px; font-weight: 500; letter-spacing: 0.5px;
+      cursor: pointer; text-decoration: none; width: fit-content;
+    }
+
+    /* ── EVENTS CRAWL ── */
+    .events-crawl {
+      background: #d9d9d9; border-top: 4px solid #fff;
+      display: flex; align-items: center; gap: 40px;
+      height: 92px; padding-right: 20px;
+      /* no vertical padding on the outer row — red block must stretch full 92px */
+    }
+    .events-label {
+      background: #961a1b; border-right: 4px solid #fff;
+      display: flex; align-items: center; justify-content: center;
+      /* align-self: stretch makes it fill the full 92px height of the parent */
+      align-self: stretch;
+      width: 160px; flex-shrink: 0;
+      font-size: 18px; font-weight: 700; color: #fff;
+      text-transform: uppercase; text-align: center; letter-spacing: 0.5px;
+      line-height: 20px; padding: 1px 4px;
+    }
+    .cal-item {
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0; width: 376px;
+      /* vertical padding lives here, not on the outer row */
+      padding-top: 20px; padding-bottom: 20px;
+    }
+    .cal-icon {
+      display: flex; flex-direction: column; width: 50px; height: 55px;
+      border: 1px solid #c9c9c9; border-radius: 5px; overflow: hidden;
+      background: #fff; flex-shrink: 0;
+    }
+    .cal-month {
+      background: #961a1b; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+    }
+    .cal-day {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 500; color: #000;
+    }
+    .cal-info { flex: 1; }
+    .cal-title { font-size: 16px; font-weight: 500; color: #052175; letter-spacing: 0.5px; line-height: 1.4; }
+    .cal-desc { font-size: 14px; color: #000; letter-spacing: 0.5px; line-height: 16px; }
+
+    /* ── SECTIONS ── */
+    .section { padding: 0 60px; }
+
+    /* ── GET OUT AND DRIVE ── */
+    .drive-section { display: flex; flex-direction: column; gap: 30px; padding: 0 60px; }
+    .drive-header { display: flex; flex-direction: column; gap: 20px; }
+    .section-title { font-size: 36px; font-weight: 500; letter-spacing: 0.5px; }
+    .section-desc { font-size: 16px; letter-spacing: 0.5px; line-height: 20px; }
+    .cards-grid { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .activity-card {
+      background: #f5f5f5; display: flex; flex-direction: column;
+      width: 320px; height: 468px; border-radius: 10px; overflow: hidden; flex-shrink: 0;
+    }
+    .card-img { width: 320px; height: 219px; flex-shrink: 0; overflow: hidden; position: relative; }
+    .card-img img { width: 100%; height: 100%; object-fit: cover; }
+    .card-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .card-title { font-size: 22px; font-weight: 500; text-align: center; letter-spacing: 0.5px; }
+    .card-text { font-size: 16px; line-height: 20px; letter-spacing: 0.5px; flex: 1; }
+    .btn-learn {
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 20px; background: #fff;
+      border: 1px solid #052175; color: #052175;
+      font-size: 18px; font-weight: 500; letter-spacing: 0.5px;
+      cursor: pointer; text-decoration: none; width: 100%;
+    }
+    .btn-learn:hover { background: #052175; color: #fff; transition: 0.2s; }
+
+    /* ── NEWS ── */
+    .news-section { display: flex; flex-direction: column; gap: 20px; padding: 0 60px; }
+    .news-header { display: flex; align-items: flex-end; justify-content: space-between; }
+    .news-title { font-size: 30px; font-weight: 500; letter-spacing: 0.5px; }
+    .link-btn { font-size: 16px; font-weight: 500; color: #052175; text-decoration: none; letter-spacing: 0.5px; white-space: nowrap; }
+    .news-grid { display: flex; flex-direction: column; gap: 40px; }
+    .news-row { display: flex; justify-content: space-between; gap: 20px; }
+    .story-card {
+      display: flex; gap: 10px; width: 652px; border-radius: 10px; position: relative;
+    }
+    .story-img { width: 292px; height: 200px; border-radius: 10px; overflow: hidden; flex-shrink: 0; }
+    .story-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+    .story-body { display: flex; flex-direction: column; gap: 10px; justify-content: center; padding: 20px 30px; flex: 1; }
+    .story-tag { font-size: 14px; font-weight: 500; color: #961a1b; letter-spacing: 0.5px; }
+    .story-title { font-size: 24px; font-weight: 500; color: #052175; letter-spacing: 0.5px; text-decoration: none; display: block; }
+    .story-text { font-size: 16px; line-height: 20px; letter-spacing: 0.5px; }
+    .read-more { font-size: 16px; font-weight: 500; color: #052175; text-decoration: none; letter-spacing: 0.5px; }
+
+    /* ── NEWSLETTER BANNER ── */
+    .newsletter-banner {
+      background: #f4f4f4; display: flex; align-items: center; gap: 31px;
+      height: 172px; padding: 20px 40px; border-radius: 10px;
+    }
+    .newsletter-img { width: 135px; height: 132px; object-fit: cover; flex-shrink: 0; }
+    .newsletter-body { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .newsletter-date { font-size: 14px; font-weight: 500; color: #d10e1c; letter-spacing: 0.5px; }
+    .newsletter-title { font-size: 24px; font-weight: 500; letter-spacing: 0; }
+    .newsletter-text { font-size: 16px; line-height: 20px; }
+    .newsletter-actions { display: flex; gap: 16px; flex-shrink: 0; }
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 20px; background: #052175;
+      color: #fff; font-size: 18px; font-weight: 500;
+      letter-spacing: 0.5px; border: none; cursor: pointer; text-decoration: none; white-space: nowrap;
+    }
+    .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 20px; background: #fff;
+      border: 1px solid #052175; color: #052175;
+      font-size: 18px; font-weight: 500; letter-spacing: 0.5px; cursor: pointer; text-decoration: none; white-space: nowrap;
+    }
+
+    /* ── JOIN THE CLUB ── */
+    .join-section { position: relative; width: 100%; height: 567px; overflow: hidden; }
+    .join-bg {
+      position: absolute; inset: 0; background: #961a1b;
+    }
+    .join-bg-img { position: absolute; inset: 0; opacity: 0.3; overflow: hidden; }
+    .join-bg-img img { width: 100%; height: 100%; object-fit: cover; }
+    .join-inner {
+      position: relative; z-index: 1; display: flex; align-items: center; gap: 70px;
+      height: 100%; padding: 0;
+    }
+    .join-photo-col { position: relative; width: 629px; height: 567px; flex-shrink: 0; overflow: hidden; }
+    .join-photo-col img { width: 100%; height: 100%; object-fit: cover; }
+    .join-photo-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 23%, rgba(0,0,0,0.7) 100%);
+    }
+    .join-photo-caption {
+      position: absolute; bottom: 16px; left: 32px;
+      font-size: 16px; color: #fff; letter-spacing: 0.5px;
+    }
+    .join-photo-caption strong { font-weight: 700; display: block; }
+    .join-content { display: flex; flex-direction: column; gap: 20px; width: 697px; padding-right: 40px; }
+    .join-title { font-size: 40px; font-weight: 500; color: #fff; letter-spacing: 0.5px; line-height: 50px; }
+    .join-body { display: flex; flex-direction: column; gap: 20px; }
+    .join-desc { font-size: 16px; font-weight: 500; color: #fff; letter-spacing: 0.5px; line-height: 1.5; }
+    .join-list { list-style: disc; padding-left: 24px; color: #fff; font-size: 16px; font-weight: 500; letter-spacing: 0.5px; }
+    .join-list li { line-height: 1.6; }
+
+    /* ── ANNIVERSARIES TICKER ── */
+    .anniversaries { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+    .anniv-header {
+      background: #2e2c2f; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .anniv-header-text { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.5px; text-align: center; }
+    .anniv-ticker-wrap {
+      background: #f5cc83; height: 82px; overflow: hidden; position: relative;
+    }
+    /* Upload button shown when no file is loaded */
+    .anniv-upload-prompt {
+      display: flex; align-items: center; justify-content: center; gap: 16px; height: 100%;
+      padding: 0 40px;
+    }
+    .anniv-upload-prompt p { font-size: 14px; color: #555; font-style: italic; }
+    .upload-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 18px; background: #052175; color: #fff; border: none;
+      font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500;
+      cursor: pointer; border-radius: 4px; white-space: nowrap;
+    }
+    .upload-btn:hover { background: #03154e; }
+    #anniv-file-input { display: none; }
+    /* The scrolling track */
+    .anniv-track-outer {
+      display: none; /* shown via JS once data loaded */
+      align-items: center; height: 100%;
+      overflow: hidden; position: relative;
+    }
+    .anniv-track-outer.active { display: flex; }
+    .anniv-track {
+      display: flex; align-items: center; gap: 0;
+      white-space: nowrap; will-change: transform;
+      animation: ticker-scroll 30s linear infinite;
+    }
+    .anniv-track:hover { animation-play-state: paused; }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .anniv-member {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 0 40px; flex-shrink: 0;
+      border-right: 1px solid rgba(0,0,0,0.15);
+    }
+    .anniv-badge {
+      width: 28px; height: 36px; flex-shrink: 0;
+      background: #961a1b;
+      clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);
+      display: flex; align-items: flex-start; justify-content: center; padding-top: 5px;
+    }
+    .anniv-badge span { font-size: 11px; font-weight: 700; color: #fff; line-height: 1; }
+    .anniv-name { font-size: 14px; font-weight: 700; color: #000; display: block; }
+    .anniv-location { font-size: 12px; color: #333; display: block; }
+
+    /* ── SPONSORS ── */
+    .sponsors-section { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 0 40px 60px; }
+    .sponsors-title { font-size: 36px; font-weight: 400; color: #000; text-align: center; letter-spacing: 0.5px; }
+    .sponsors-grid { display: flex; gap: 20px; width: 100%; }
+    .sponsor-placeholder { background: #d9d9d9; flex: 1; height: 200px; }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #2e2c2f; height: 305px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .footer-text { font-size: 36px; font-weight: 700; color: #fff; text-align: center; letter-spacing: 0.5px; }
+
+    /* spacing between page sections */
+    .page-sections { display: flex; flex-direction: column; gap: 60px; }
+  </style>
 </head>
 <body>
 
-<div id="main-app" style="display:none">
-<div class="clipboard-board">
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <img src="https://www.figma.com/api/mcp/asset/4bbb1f02-a338-4869-b506-feac30245a3d" alt="Riesentöter PCA emblem" style="width:39px;height:37px;object-fit:contain;display:block;" />
+      <div class="logo-text">
+        <span class="logo-name">Riesentöter</span>
+        <span class="logo-sub">Porsche Club of America</span>
+      </div>
+    </div>
+    <nav>
+      <a href="#" class="active">Home</a>
+      <a href="#">News &amp; Events</a>
+      <a href="#">Drive with Us</a>
+      <a href="#">Get Involved</a>
+      <a href="#">Cars &amp; Tech</a>
+      <a href="#">About the Club</a>
+    </nav>
+  </div>
+  <div class="header-stripe">
+    <div class="stripe-red"></div>
+    <div class="stripe-blue"></div>
+    <div class="stripe-red"></div>
+  </div>
+</header>
 
-  <!-- Metal clip -->
-  <div class="clip">
-    <div class="clip-spring"></div>
-    <div class="clip-body">
-      <div class="clip-hole"></div>
+<!-- HERO -->
+<section class="hero">
+  <img src="https://www.figma.com/api/mcp/asset/d268906a-a26c-4e00-994b-b6f64bddd1bd" alt="Riesentöter PCA hero – Porsches on track" />
+  <div class="hero-gradient"></div>
+  <div class="hero-content">
+    <div class="hero-text">
+      <h1 class="hero-title">Welcome to Riesentöter PCA</h1>
+      <p class="hero-desc">Established in 1957 as the Eastern Pennsylvania Region of the Porsche Club of America. Our region represents Berks, Bucks, Carbon, Chester, Delaware, Montgomery, Lehigh, Northampton, Philadelphia, and Schuylkill counties.</p>
+    </div>
+    <a href="#" class="btn-member">Become a member</a>
+  </div>
+</section>
+
+<!-- EVENTS CRAWL -->
+<div class="events-crawl">
+  <div class="events-label">Upcoming<br>Events</div>
+
+  <div class="cal-item">
+    <div class="cal-icon">
+      <div class="cal-month">OCT</div>
+      <div class="cal-day">20</div>
+    </div>
+    <div class="cal-info">
+      <div class="cal-title">Autumn Rally</div>
+      <div class="cal-desc">An Autumn rally on some beautiful country roads.</div>
     </div>
   </div>
 
-  <!-- Pencil decoration -->
-  <!-- Paper stack -->
-  <div class="paper-stack">
-    <div class="paper">
-      <!-- Header -->
-      <div class="paper-header">
-        <div class="paper-title">Der Gasser Upper</div>
-        <div class="paper-date" id="header-date"></div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
-        <div class="tab" onclick="switchTab('pay')">Payments</div>
-        <div class="tab" onclick="switchTab('admin')">Admin</div>
-      </div>
-
-      <!-- ── DASHBOARD ── -->
-      <div id="tab-dashboard" class="section active">
-
-        <!-- Buy Gas button -->
-        <button class="buy-gas-btn" id="buy-gas-btn" onclick="openModal()" style="display:none">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 22V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/>
-            <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0"/>
-            <line x1="3" y1="22" x2="17" y2="22"/>
-            <line x1="7" y1="10" x2="11" y2="10"/>
-          </svg>
-          Log Gas Purchase
-        </button>
-
-        <!-- Gas Supply -->
-        <div class="card">
-          <div class="card-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 22V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v14"/>
-              <path d="M14 10h2c1.1 0 2 .9 2 2v1c0 1.1.9 2 2 2"/>
-              <line x1="4" y1="22" x2="18" y2="22"/>
-              <rect x="6" y="10" width="6" height="4" rx="1"/>
-            </svg>
-            Gas Supply
-          </div>
-          <hr class="ruled-line">
-          <div id="dash-buyers"><div class="loading"><span class="spinner"></span>loading...</div></div>
-        </div>
-
-        <!-- Today's Usage -->
-        <div class="card">
-          <div class="card-title">
-            <!-- Odometer sketch icon -->
-            <svg width="22" height="14" viewBox="0 0 120 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="4" width="112" height="52" rx="10"/>
-              <rect x="12" y="10" width="28" height="40" rx="3"/>
-              <text x="26" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
-              <rect x="46" y="10" width="28" height="40" rx="3"/>
-              <text x="60" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
-              <rect x="80" y="10" width="28" height="40" rx="3"/>
-              <text x="94" y="36" text-anchor="middle" font-family="monospace" font-size="20" font-weight="bold" fill="currentColor" stroke="none">0</text>
-              <line x1="12" y1="30" x2="108" y2="30" stroke-width="1.5" stroke-dasharray="2,3"/>
-            </svg>
-            Today's Usage
-          </div>
-          <hr class="ruled-line">
-          <div id="dash-log"><div class="loading"><span class="spinner"></span>loading...</div></div>
-        </div>
-      </div>
-
-      <!-- ── PAYMENTS ── -->
-      <div id="tab-pay" class="section">
-        <div class="card-title" style="margin-bottom:6px">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="6" width="20" height="14" rx="2"/>
-            <line x1="2" y1="10" x2="22" y2="10"/>
-            <line x1="7" y1="15" x2="10" y2="15"/>
-          </svg>
-          What's Owed
-        </div>
-        <hr class="ruled-line">
-        <div id="payment-list"><div class="loading"><span class="spinner"></span>loading...</div></div>
-      </div>
-
-      <!-- ── ADMIN ── -->
-      <div id="tab-admin" class="section">
-        <div class="card-title" style="margin-bottom:6px">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          Settings
-        </div>
-        <hr class="ruled-line">
-
-        <!-- Price -->
-        <div class="card">
-          <div style="font-family:'Patrick Hand',cursive;font-size:13px;color:var(--pencil-faint);margin-bottom:4px">Price per gallon ($)</div>
-          <input type="number" id="admin-price" placeholder="3.50" step="0.01" min="0" style="max-width:120px"/>
-          <button class="btn btn-outline" style="width:auto;display:inline-block;padding:5px 16px;font-size:16px;margin-left:10px;margin-top:0;vertical-align:bottom" onclick="saveSettings()">save</button>
-        </div>
-
-        <hr class="section-divider">
-
-        <!-- Buyers -->
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div class="card-title" style="margin-bottom:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-              Buyers
-            </div>
-            <button onclick="toggleAddBuyer()" id="add-buyer-toggle" style="background:none;border:none;cursor:pointer;color:var(--pencil);font-family:'Caveat',cursive;font-size:26px;line-height:1;padding:0 4px">+</button>
-          </div>
-          <div id="admin-buyers-list"><div class="loading"><span class="spinner"></span>loading...</div></div>
-          <div id="add-buyer-form" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(44,36,22,0.2)">
-            <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:var(--pencil-faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">add new buyer</div>
-            <label>Name</label>
-            <input type="text" id="new-buyer-name" placeholder="e.g. John" />
-            <div class="inline-row">
-              <div>
-                <label>Cans Bought</label>
-                <input type="number" id="new-buyer-cans" placeholder="10" min="1" />
-              </div>
-              <div>
-                <label>Venmo Handle</label>
-                <input type="text" id="new-buyer-venmo" placeholder="john-99" autocapitalize="off" />
-              </div>
-            </div>
-            <label>Phone (Apple Pay, optional)</label>
-            <input type="tel" id="new-buyer-phone" placeholder="555-555-5555" />
-            <button class="btn btn-primary" onclick="addBuyer()" style="margin-top:10px">Add Buyer</button>
-          </div>
-        </div>
-
-        <hr class="section-divider">
-
-        <!-- QR Codes -->
-        <div class="card qr-print-card">
-          <div class="card-title" style="margin-bottom:4px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-              <rect x="14" y="14" width="3" height="3"/>
-              <rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/>
-              <rect x="18" y="18" width="3" height="3"/>
-            </svg>
-            QR Codes
-          </div>
-          <div style="font-family:'Patrick Hand',cursive;font-size:11px;color:var(--pencil-faint);margin-bottom:10px">Print and stick on each gas can</div>
-          <div id="qr-grid" class="qr-grid"><div class="loading"><span class="spinner"></span>loading...</div></div>
-          <button class="btn btn-outline" style="margin-top:10px;font-size:15px" onclick="window.print()">print QR codes</button>
-        </div>
-
-        <hr class="section-divider">
-
-        <!-- Danger Zone -->
-        <div class="card">
-          <div class="card-title" style="color:var(--pencil-faint);font-size:15px;margin-bottom:6px">danger zone</div>
-          <button class="btn btn-outline" style="color:var(--pencil-faint);font-size:15px;border-style:dashed" onclick="resetDay()">reset today's usage</button>
-          <button class="btn btn-danger" style="font-size:15px" onclick="clearAll()">reset all data</button>
-        </div>
-      </div>
-
-    </div><!-- /paper -->
-  </div><!-- /paper-stack -->
-</div><!-- /clipboard-board -->
-</div><!-- /main-app -->
-
-<!-- BUY GAS MODAL -->
-<div id="buy-modal" onclick="if(event.target===this)closeModal()">
-  <div class="modal-sheet">
-    <div class="modal-header">
-      <div class="modal-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px">
-          <path d="M3 22V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14"/>
-          <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2"/>
-          <line x1="3" y1="22" x2="17" y2="22"/>
-          <line x1="7" y1="10" x2="11" y2="10"/>
-        </svg>Log Gas Purchase
-      </div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+  <div class="cal-item">
+    <div class="cal-icon">
+      <div class="cal-month">OCT</div>
+      <div class="cal-day">26</div>
     </div>
-    <label>Your Name</label>
-    <input type="text" id="log-name" placeholder="your name" />
-    <label>Whose gas?</label>
-    <select id="log-buyer">
-      <option value="">— pick a buyer —</option>
-    </select>
-    <label>How many cans?</label>
-    <div class="can-btns" id="can-btns">
-      <button class="can-btn" onclick="selectCans(1)">1</button>
-      <button class="can-btn" onclick="selectCans(2)">2</button>
-      <button class="can-btn" onclick="selectCans(3)">3</button>
-      <button class="can-btn" onclick="selectCans(4)">4</button>
-      <button class="can-btn" onclick="selectCans(5)">5</button>
+    <div class="cal-info">
+      <div class="cal-title">Scenic Drive and Bierhaul Lunch</div>
+      <div class="cal-desc">A scenic fall drive through Chester, Delaware and New Castle counties</div>
     </div>
-    <input type="hidden" id="log-cans" value="" />
-    <button class="btn btn-primary" id="log-btn" onclick="logUsage()">Log It</button>
+  </div>
+
+  <div class="cal-item">
+    <div class="cal-icon">
+      <div class="cal-month">NOV</div>
+      <div class="cal-day">17</div>
+    </div>
+    <div class="cal-info">
+      <div class="cal-title">Phil-a-Trunk Food Drive</div>
+      <div class="cal-desc">Fill your frunks to help those less fortunate this holiday season</div>
+    </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="page-sections" style="margin-top: 60px; margin-bottom: 60px;">
 
-<script>
-const SUPABASE_URL = 'https://njvhuqhqorgheocpenlj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmh1cWhxb3JnaGVvY3BlbmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTk1NTAsImV4cCI6MjA4NzA5NTU1MH0.Bgnl2AsMSfGAqZnZ0bIeN1-h58B8FHFAIm2rjDmrdZk';
-
-let sb = null;
-let settings = { startingCans: 10, pricePerGallon: 3.50 };
-let buyers = [];
-
-// Set date in header
-document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-
-// ---- INIT ----
-async function init() {
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  document.getElementById('main-app').style.display = 'block';
-  await Promise.all([loadSettings(), loadBuyers()]);
-  renderDashboard();
-  subscribeRealtime();
-  checkURLParams();
-}
-
-function checkURLParams() {
-  const params = new URLSearchParams(window.location.search);
-  const buyerId = params.get('buyer');
-  if (buyerId) {
-    openModal().then(() => {
-      document.getElementById('log-buyer').value = buyerId;
-      const buyer = buyers.find(b => String(b.id) === String(buyerId));
-      if (buyer) { showToast('logging from ' + buyer.name + "'s can"); document.getElementById('log-name').focus(); }
-    });
-  }
-}
-
-function subscribeRealtime() {
-  sb.channel('gas_tracker')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_entries' }, () => { renderDashboard(); renderPayments(); populateBuyerSelect(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => loadSettings())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'gas_buyers' }, () => {
-      loadBuyers().then(() => { renderDashboard(); renderAdminBuyers(); populateBuyerSelect(); renderPayments(); renderQRCodes(); });
-    })
-    .subscribe();
-}
-
-// ---- SETTINGS ----
-async function loadSettings() {
-  const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
-  if (data) settings = { startingCans: data.starting_cans || 10, pricePerGallon: parseFloat(data.price_per_gallon) || 3.50 };
-}
-
-async function saveSettings() {
-  const price = parseFloat(document.getElementById('admin-price').value);
-  if (isNaN(price) || price < 0) { showToast('enter a valid price', true); return; }
-  const { error } = await sb.from('settings').upsert({ id: 1, price_per_gallon: price });
-  if (error) { showToast('error: ' + error.message, true); return; }
-  settings.pricePerGallon = price;
-  showToast('price saved!');
-  renderDashboard();
-}
-
-// ---- BUYERS ----
-async function loadBuyers() {
-  const { data } = await sb.from('gas_buyers').select('*').order('created_at', { ascending: true });
-  buyers = data || [];
-}
-
-async function addBuyer() {
-  const name = document.getElementById('new-buyer-name').value.trim();
-  const cans = parseInt(document.getElementById('new-buyer-cans').value);
-  const venmo = document.getElementById('new-buyer-venmo').value.trim().replace('@', '');
-  const phone = document.getElementById('new-buyer-phone').value.trim();
-  if (!name) { showToast('enter a name', true); return; }
-  if (!cans || cans < 1) { showToast('enter cans bought', true); return; }
-  const { error } = await sb.from('gas_buyers').insert({ name, cans_bought: cans, venmo_handle: venmo || null, phone: phone || null });
-  if (error) { showToast('error: ' + error.message, true); return; }
-  document.getElementById('new-buyer-name').value = '';
-  document.getElementById('new-buyer-cans').value = '';
-  document.getElementById('new-buyer-venmo').value = '';
-  document.getElementById('new-buyer-phone').value = '';
-  showToast(name + ' added!');
-  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard();
-}
-
-async function deleteBuyer(id) {
-  if (!confirm('remove this buyer and their entries?')) return;
-  await sb.from('gas_entries').delete().eq('buyer_id', id);
-  const { error } = await sb.from('gas_buyers').delete().eq('id', id);
-  if (error) { showToast('error: ' + error.message, true); return; }
-  showToast('buyer removed');
-  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard();
-}
-
-async function addCans(id, currentTotal) {
-  const { error } = await sb.from('gas_buyers').update({ cans_bought: currentTotal + 1 }).eq('id', id);
-  if (error) { showToast('error: ' + error.message, true); return; }
-  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
-}
-
-async function removeCans(id, currentTotal, usedSoFar) {
-  const newTotal = currentTotal - 1;
-  if (newTotal < usedSoFar) { showToast("can't go below used (" + usedSoFar + ')', true); return; }
-  if (newTotal < 1) { showToast('must have at least 1', true); return; }
-  const { error } = await sb.from('gas_buyers').update({ cans_bought: newTotal }).eq('id', id);
-  if (error) { showToast('error: ' + error.message, true); return; }
-  await loadBuyers(); renderAdminBuyers(); await populateBuyerSelect(); renderDashboard(); renderQRCodes();
-}
-
-function toggleAddBuyer() {
-  const form = document.getElementById('add-buyer-form');
-  const btn = document.getElementById('add-buyer-toggle');
-  const open = form.style.display === 'none';
-  form.style.display = open ? 'block' : 'none';
-  btn.textContent = open ? '−' : '+';
-}
-
-async function populateBuyerSelect() {
-  const sel = document.getElementById('log-buyer');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— pick a buyer —</option>';
-  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
-  const usedPerBuyer = {};
-  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
-  buyers.forEach(b => {
-    const remaining = b.cans_bought - (usedPerBuyer[b.id] || 0);
-    if (remaining <= 0) return;
-    const opt = document.createElement('option');
-    opt.value = b.id;
-    opt.textContent = b.name + ' (' + remaining + ' can' + (remaining !== 1 ? 's' : '') + ' left)';
-    sel.appendChild(opt);
-  });
-  if (current) sel.value = current;
-}
-
-async function renderAdminBuyers() {
-  const el = document.getElementById('admin-buyers-list');
-  document.getElementById('admin-price').value = settings.pricePerGallon;
-  if (buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state" style="padding:10px 0">no buyers yet</div>';
-    const form = document.getElementById('add-buyer-form');
-    const btn = document.getElementById('add-buyer-toggle');
-    if (form) form.style.display = 'block';
-    if (btn) btn.textContent = '−';
-    return;
-  }
-  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
-  const usedPerBuyer = {};
-  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
-  el.innerHTML = buyers.map(b => {
-    const used = usedPerBuyer[b.id] || 0;
-    const remaining = Math.max(0, b.cans_bought - used);
-    const depleted = remaining === 0;
-    return `
-    <div class="buyer-item">
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="buyer-name" style="${depleted ? 'color:var(--pencil-faint);text-decoration:line-through' : ''}">${b.name}${depleted ? ' <span style="font-size:11px;color:var(--red-ink);font-family:\'Patrick Hand\',cursive">(out)</span>' : ''}</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="buyer-cans" style="${depleted ? 'color:var(--pencil-faint)' : ''}">${remaining}/${b.cans_bought}</div>
-            <button class="btn-icon" style="color:var(--pencil);border-color:var(--pencil)" onclick="addCans(${b.id}, ${b.cans_bought})">+</button>
-            <button class="btn-icon" style="color:var(--pencil-faint);border-color:var(--pencil-faint)" onclick="removeCans(${b.id}, ${b.cans_bought}, ${used})">−</button>
-            <button class="btn-icon" style="color:var(--red-ink);border-color:var(--red-ink)" onclick="deleteBuyer(${b.id})">✕</button>
-          </div>
+  <!-- GET OUT AND DRIVE -->
+  <div class="drive-section">
+    <div class="drive-header">
+      <h2 class="section-title">Get out and drive</h2>
+      <p class="section-desc">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin meatball capicola strip steak.</p>
+    </div>
+    <div class="cards-grid">
+      <div class="activity-card">
+        <div class="card-img"><img src="https://www.figma.com/api/mcp/asset/a4fb2715-21a2-41d0-9d1b-da2d52b44ceb" alt="Driver Education" /></div>
+        <div class="card-body">
+          <div class="card-title">Driver Education</div>
+          <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
+          <a href="#" class="btn-learn">Learn More</a>
         </div>
-        <div class="buyer-meta">$${(b.cans_bought * costPerCan()).toFixed(2)} total${b.venmo_handle ? ' · @' + b.venmo_handle : ''}</div>
       </div>
-    </div>`;
-  }).join('');
-  const form = document.getElementById('add-buyer-form');
-  const btn = document.getElementById('add-buyer-toggle');
-  if (form && form.style.display !== 'block') { form.style.display = 'none'; if (btn) btn.textContent = '+'; }
-}
+      <div class="activity-card">
+        <div class="card-img"><img src="https://www.figma.com/api/mcp/asset/2fb243ee-d3d9-4507-bda4-2f85552e97fb" alt="Autocross" /></div>
+        <div class="card-body">
+          <div class="card-title">Autocross</div>
+          <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
+          <a href="#" class="btn-learn">Learn More</a>
+        </div>
+      </div>
+      <div class="activity-card">
+        <div class="card-img"><img src="https://www.figma.com/api/mcp/asset/72fb8763-1975-4c0f-a033-18fa2938398e" alt="Rally" /></div>
+        <div class="card-body">
+          <div class="card-title">Rally</div>
+          <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
+          <a href="#" class="btn-learn">Learn More</a>
+        </div>
+      </div>
+      <div class="activity-card">
+        <div class="card-img"><img src="https://www.figma.com/api/mcp/asset/d8dceac2-2ce1-4874-b801-1f91f7efe543" alt="Touring" /></div>
+        <div class="card-body">
+          <div class="card-title">Touring</div>
+          <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
+          <a href="#" class="btn-learn">Learn More</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-// ---- HELPERS ----
-function costPerCan() { return settings.pricePerGallon * 5; }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-
-async function selectBuyerAndGo(buyerId) {
-  await openModal();
-  document.getElementById('log-buyer').value = buyerId;
-}
-
-async function openModal() {
-  document.getElementById('buy-modal').style.display = 'block';
-  const savedName = localStorage.getItem('gas_user_name');
-  if (savedName && !document.getElementById('log-name').value) document.getElementById('log-name').value = savedName;
-  await populateBuyerSelect();
-}
-
-function closeModal() {
-  document.getElementById('buy-modal').style.display = 'none';
-  document.getElementById('log-cans').value = '';
-  document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
-}
-
-function selectCans(n) {
-  document.getElementById('log-cans').value = n;
-  document.querySelectorAll('.can-btn').forEach((btn, i) => btn.classList.toggle('selected', i + 1 === n));
-}
-
-function showToast(msg, isError = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isError ? ' error' : '');
-  setTimeout(() => t.className = 'toast', 2800);
-}
-
-// ---- TABS ----
-function switchTab(id) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  ['dashboard', 'pay', 'admin'].forEach((name, i) => { if (name === id) document.querySelectorAll('.tab')[i].classList.add('active'); });
-  document.getElementById('tab-' + id).classList.add('active');
-  if (id === 'dashboard') renderDashboard();
-  if (id === 'pay') renderPayments();
-  if (id === 'admin') { renderAdminBuyers(); populateBuyerSelect(); renderQRCodes(); }
-}
-
-// ---- DASHBOARD ----
-async function renderDashboard() {
-  if (!sb) return;
-  const { data: entries } = await sb.from('gas_entries').select('*').eq('entry_date', todayStr());
-  const { data: allUsageEntries } = await sb.from('gas_entries').select('buyer_id, cans');
-  const usedPerBuyer = {};
-  (allUsageEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
-
-  // Show buy gas button only if any cans available
-  const totalRemaining = buyers.reduce((sum, b) => {
-    const used = usedPerBuyer[b.id] || 0;
-    return sum + Math.max(0, b.cans_bought - used);
-  }, 0);
-  const buyBtn = document.getElementById('buy-gas-btn');
-  if (buyBtn) buyBtn.style.display = totalRemaining > 0 ? 'flex' : 'none';
-
-  // Sketch-style gas can SVG (hand-drawn look with slightly wobbly stroke)
-  const canSVG = (cls, buyerId) => {
-    const clickable = cls === 'available' && buyerId;
-    const onclick = clickable ? `onclick="selectBuyerAndGo(${buyerId})" style="cursor:pointer"` : '';
-    const fillColor = cls === 'available' ? '#c0392b' : 'rgba(44,36,22,0.15)';
-    return `<svg class="can-icon ${cls}" viewBox="0 0 90 120" fill="${fillColor}" xmlns="http://www.w3.org/2000/svg" ${onclick}>
-      <rect x="30" y="2" width="30" height="9" rx="3"/>
-      <rect x="33" y="9" width="24" height="8" rx="2"/>
-      <path fill-rule="evenodd" d="M10 24 Q10 14 20 14 L70 14 Q80 14 80 24 L80 106 Q80 116 70 116 L20 116 Q10 116 10 106 Z M58 28 Q72 28 72 42 L72 66 Q72 78 60 78 L58 78 Z"/>
-    </svg>`;
-  };
-
-  const buyersEl = document.getElementById('dash-buyers');
-  if (buyers.length === 0) {
-    // Fuel gauge SVG (sketch style)
-    buyersEl.innerHTML = `<div class="empty-state" style="padding:16px 0">
-      <svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172.71 78" width="110" height="50" style="display:block;margin:0 auto 10px;opacity:0.35">
-        <defs><style>.cls-1{fill:#2c2416;stroke-width:0px;}</style></defs>
-        <path class="cls-1" d="M26.12,67.5h-7c0-8.9,1.71-17.55,5.07-25.71l6.47,2.67c-3.01,7.31-4.54,15.06-4.54,23.04Z"/>
-        <path class="cls-1" d="M33.35,38.79l-6.16-3.33c6.95-12.87,18.1-23.31,31.39-29.38l2.91,6.37c-11.91,5.45-21.91,14.8-28.14,26.34ZM139.86,38.75c-6.24-11.54-16.24-20.88-28.16-26.32l2.91-6.37c13.29,6.06,24.45,16.49,31.41,29.36l-6.16,3.33ZM67.32,10.14l-2.23-6.63c6.92-2.33,14.16-3.51,21.53-3.51s14.57,1.17,21.47,3.49l-2.23,6.64c-6.18-2.07-12.66-3.12-19.25-3.12s-13.1,1.06-19.3,3.14Z"/>
-        <path class="cls-1" d="M154.12,67.5h-7c0-7.98-1.53-15.73-4.54-23.04l6.47-2.67c3.37,8.16,5.07,16.81,5.07,25.71Z"/>
-        <path class="cls-1" d="M12.82,50.86v3.17H3.77v3.67h8.3v2.93H3.77v4.2h9.24v3.17H0v-17.14h12.82Z"/>
-        <path class="cls-1" d="M172.71,50.86v3.17h-8.28v3.96h7.18v2.93h-7.18v7.08h-3.77v-17.14h12.05Z"/>
-        <polygon class="cls-1" points="86.62 72 33.12 67.5 86.62 62 86.62 72"/>
-        <circle class="cls-1" cx="86.12" cy="67" r="11"/>
-      </svg>
-      <span style="font-family:'Patrick Hand',cursive">We're on E. Add cans in the Admin tab</span>
-    </div>`;
-  } else {
-    buyersEl.innerHTML = buyers.map(b => {
-      const used = usedPerBuyer[b.id] || 0;
-      const remaining = Math.max(0, b.cans_bought - used);
-      const depleted = remaining === 0;
-      const cans = Array.from({length: b.cans_bought}, (_, i) =>
-        canSVG(i < remaining ? 'available' : 'used', i < remaining ? b.id : null)
-      ).join('');
-      return `
-        <div class="buyer-item" style="flex-direction:column;align-items:flex-start;gap:6px">
-          <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-            <div class="buyer-name" style="${depleted ? 'color:var(--pencil-faint);text-decoration:line-through' : ''}">${b.name}</div>
-            <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:${depleted ? 'var(--pencil-faint)' : 'var(--pencil-light)'}">
-              ${used}/${b.cans_bought} used · $${(used * costPerCan()).toFixed(2)} owed
-            </div>
+  <!-- NEWS FROM THE REGION -->
+  <div class="news-section">
+    <div class="news-header">
+      <h2 class="news-title">News from the region</h2>
+      <a href="#" class="link-btn">More news &gt;</a>
+    </div>
+    <div class="news-grid">
+      <div class="news-row">
+        <!-- Story 1 -->
+        <div class="story-card">
+          <div class="story-img"><img src="https://www.figma.com/api/mcp/asset/93ec5028-e132-432c-8c49-e8a7318ac767" alt="2024 Phil-a-Trunk" /></div>
+          <div class="story-body">
+            <span class="story-tag">SOCIAL</span>
+            <a href="#" class="story-title">2024 Phil-a-Trunk</a>
+            <p class="story-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin.</p>
+            <a href="#" class="read-more">Read more &gt;</a>
           </div>
-          <div class="can-grid">${cans}</div>
-        </div>`;
-    }).join('');
-  }
-
-  // Today's usage
-  const personSVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-right:8px;margin-top:2px"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`;
-  const logEl = document.getElementById('dash-log');
-  if (!entries || entries.length === 0) {
-    logEl.innerHTML = `<div class="empty-state">
-      <svg width="80" height="36" viewBox="0 0 120 54" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 8px;opacity:0.4" stroke="var(--pencil)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="4" width="112" height="46" rx="10"/>
-        <rect x="12" y="10" width="28" height="34" rx="3"/>
-        <text x="26" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
-        <rect x="46" y="10" width="28" height="34" rx="3"/>
-        <text x="60" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
-        <rect x="80" y="10" width="28" height="34" rx="3"/>
-        <text x="94" y="33" text-anchor="middle" font-family="monospace" font-size="18" font-weight="bold" fill="var(--pencil)" stroke="none">0</text>
-        <line x1="12" y1="27" x2="108" y2="27" stroke-width="1.5" stroke-dasharray="3,4"/>
-      </svg>
-      <span>nothing logged yet today</span>
-    </div>`;
-  } else {
-    logEl.innerHTML = entries.map(e => {
-      const buyer = buyers.find(b => b.id === e.buyer_id);
-      const cost = e.cans * costPerCan();
-      const note = encodeURIComponent('Gas - ' + e.cans + ' can' + (e.cans !== 1 ? 's' : ''));
-      const venmoDeepLink = buyer && buyer.venmo_handle
-        ? 'venmo://paycharge?txn=pay&recipients=' + buyer.venmo_handle + '&amount=' + cost.toFixed(2) + '&note=' + note : null;
-      const venmoWebLink = buyer && buyer.venmo_handle
-        ? 'https://venmo.com/' + buyer.venmo_handle + '?txn=pay&amount=' + cost.toFixed(2) + '&note=' + note : null;
-      const payBtn = !e.paid && venmoDeepLink
-        ? `<a href="${venmoDeepLink}" onclick="setTimeout(()=>{window.open('${venmoWebLink}','_blank')},500);return true;" class="btn btn-sm btn-venmo">pay</a>` : '';
-      return `
-        <div class="log-item">
-          ${personSVG}
-          <div style="flex:1">
-            <div class="log-user">${e.user_name}</div>
-            <div class="log-detail">${buyer ? '→ ' + buyer.name : ''}</div>
-            ${payBtn}
+        </div>
+        <!-- Story 2 -->
+        <div class="story-card">
+          <div class="story-img"><img src="https://www.figma.com/api/mcp/asset/a4fb2715-21a2-41d0-9d1b-da2d52b44ceb" alt="Drive-in movie night" /></div>
+          <div class="story-body">
+            <span class="story-tag">SOCIAL</span>
+            <a href="#" class="story-title">Drive-in movie night</a>
+            <p class="story-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin.</p>
+            <a href="#" class="read-more">Read more &gt;</a>
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div class="log-cans">${e.cans} can${e.cans !== 1 ? 's' : ''}</div>
-            <div class="log-cost">$${cost.toFixed(2)}</div>
-            ${e.paid ? '<div class="log-paid">✓ paid</div>' : ''}
-          </div>
-        </div>`;
-    }).join('');
-  }
-}
+        </div>
+      </div>
 
-// ---- LOG USAGE ----
-async function logUsage() {
-  const name = document.getElementById('log-name').value.trim();
-  const buyerId = document.getElementById('log-buyer').value;
-  const cans = parseInt(document.getElementById('log-cans').value);
-  if (!name) { showToast('write your name first', true); return; }
-  if (!buyerId) { showToast('pick a buyer', true); return; }
-  if (!cans || cans < 1) { showToast('select number of cans', true); return; }
-  const buyer = buyers.find(b => b.id == buyerId);
-  const { data: buyerEntries } = await sb.from('gas_entries').select('cans').eq('buyer_id', buyerId);
-  const usedFromBuyer = (buyerEntries || []).reduce((s, e) => s + e.cans, 0);
-  const remainingFromBuyer = buyer.cans_bought - usedFromBuyer;
-  if (cans > remainingFromBuyer) { showToast(buyer.name + ' only has ' + remainingFromBuyer + ' left!', true); return; }
-  const btn = document.getElementById('log-btn');
-  btn.disabled = true; btn.textContent = 'saving...';
-  const { error } = await sb.from('gas_entries').insert({ user_name: name, cans, entry_date: todayStr(), notes: null, paid: false, buyer_id: parseInt(buyerId) });
-  btn.disabled = false; btn.textContent = 'Log It';
-  if (error) { showToast('error: ' + error.message, true); return; }
-  localStorage.setItem('gas_user_name', name);
-  document.getElementById('log-name').value = '';
-  document.getElementById('log-cans').value = '';
-  document.querySelectorAll('.can-btn').forEach(b => b.classList.remove('selected'));
-  showToast('logged!');
-  closeModal();
-  await populateBuyerSelect();
-  renderDashboard();
-}
+      <!-- Der Gasser newsletter -->
+      <div class="newsletter-banner">
+        <img class="newsletter-img" src="https://www.figma.com/api/mcp/asset/c8f409e3-01a7-4ef0-9be3-5270195a163e" alt="Der Gasser newsletter cover" />
+        <div class="newsletter-body">
+          <p class="newsletter-date">October 2024</p>
+          <p class="newsletter-title">Fill up with the lastest Der Gasser</p>
+          <p class="newsletter-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin meatball capicola strip steak.</p>
+        </div>
+        <div class="newsletter-actions">
+          <a href="#" class="btn-primary">Download Now</a>
+          <a href="#" class="btn-secondary">Submit a Story</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-// ---- PAYMENTS ----
-async function renderPayments() {
-  const el = document.getElementById('payment-list');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>loading...</div>';
-  const { data: unpaid } = await sb.from('gas_entries').select('*').eq('paid', false);
-  if (!unpaid || unpaid.length === 0 || buyers.length === 0) {
-    el.innerHTML = '<div class="empty-state"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:block;margin:0 auto 8px;opacity:0.4"><polyline points="20 6 9 17 4 12"/></svg>all paid up!</div>';
-    return;
-  }
-  const byBuyer = {};
-  unpaid.forEach(e => {
-    if (!byBuyer[e.buyer_id]) byBuyer[e.buyer_id] = {};
-    if (!byBuyer[e.buyer_id][e.user_name]) byBuyer[e.buyer_id][e.user_name] = { cans: 0, cost: 0 };
-    byBuyer[e.buyer_id][e.user_name].cans += e.cans;
-    byBuyer[e.buyer_id][e.user_name].cost += e.cans * costPerCan();
+</div>
+
+<!-- JOIN THE CLUB -->
+<div style="display:flex;flex-direction:column;gap:4px;">
+  <section class="join-section">
+    <div class="join-bg">
+      <div class="join-bg-img">
+        <img src="https://www.figma.com/api/mcp/asset/d6133ded-5e46-4051-8d61-948c2398224c" alt="" />
+      </div>
+    </div>
+    <div class="join-inner">
+      <div class="join-photo-col">
+        <img src="https://www.figma.com/api/mcp/asset/e3b4be4f-fbb1-43a4-8258-ed1f3d1f962b" alt="Lisa Jones and her 2008 Carrera Cabriolet" />
+        <div class="join-photo-gradient"></div>
+        <div class="join-photo-caption">
+          <strong>Lisa Jones and her 2008 Carrera Cabriolet</strong>
+          Member since 2015
+        </div>
+      </div>
+      <div class="join-content">
+        <h2 class="join-title">Join the club</h2>
+        <div class="join-body">
+          <p class="join-desc">Bacon ipsum dolor amet chicken kielbasa shankle venison drumstick chislic ground round andouille burgdoggen meatball, capicola sirloin. Salami burgdoggen cow beef jerky turkey tri-tip meatloaf, rump meatball chicken.</p>
+          <ul class="join-list">
+            <li>Bacon ipsum dolor amet chicken kielbasa shankle</li>
+            <li>Venison drumstick chislic ground round andouille</li>
+            <li>Burgdoggen meatball, capicola sirloin.</li>
+            <li>Turkey tri-tip meatloaf, rump meatball chicken.</li>
+            <li>Beef jerky turkey tri-tip meatloaf</li>
+          </ul>
+          <a href="#" class="btn-member" style="margin-top:4px;">Become a member</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANNIVERSARIES TICKER -->
+  <div class="anniversaries">
+    <div class="anniv-header">
+      <span class="anniv-header-text">Riesentöter Member Anniversaries</span>
+    </div>
+    <div class="anniv-ticker-wrap">
+      <!-- Upload prompt (shown until file is loaded) -->
+      <div class="anniv-upload-prompt" id="anniv-upload-prompt">
+        <p>Upload <strong>anniversaries.xlsx</strong> to populate the ticker</p>
+        <button class="upload-btn" onclick="document.getElementById('anniv-file-input').click()">
+          📂 Load Excel File
+        </button>
+        <input type="file" id="anniv-file-input" accept=".xlsx,.xls" />
+      </div>
+      <!-- Ticker track (hidden until data loaded) -->
+      <div class="anniv-track-outer" id="anniv-track-outer">
+        <div class="anniv-track" id="anniv-track"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPONSORS -->
+<div style="margin-top:60px;">
+  <div class="sponsors-section">
+    <h2 class="sponsors-title">Our Sponsors</h2>
+    <div class="sponsors-grid">
+      <div class="sponsor-placeholder"></div>
+      <div class="sponsor-placeholder"></div>
+      <div class="sponsor-placeholder"></div>
+      <div class="sponsor-placeholder"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p class="footer-text">Footer</p>
+</footer>
+
+<!-- SheetJS for reading .xlsx -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  const fileInput = document.getElementById('anniv-file-input');
+  const uploadPrompt = document.getElementById('anniv-upload-prompt');
+  const trackOuter = document.getElementById('anniv-track-outer');
+  const track = document.getElementById('anniv-track');
+
+  fileInput.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        // Find header row (Name, Location, Years)
+        let dataStart = 1;
+        const header = rows[0] ? rows[0].map(h => String(h).trim().toLowerCase()) : [];
+        const nameIdx   = header.indexOf('name');
+        const locIdx    = header.indexOf('location');
+        const yearsIdx  = header.indexOf('years');
+
+        if (nameIdx === -1 || yearsIdx === -1) {
+          alert('Could not find "Name" and "Years" columns. Please check your Excel file.');
+          return;
+        }
+
+        const members = rows.slice(dataStart)
+          .filter(r => r[nameIdx])
+          .map(r => ({
+            name:     String(r[nameIdx] || '').trim(),
+            location: locIdx >= 0 ? String(r[locIdx] || '').trim() : '',
+            years:    parseInt(r[yearsIdx]) || 0,
+          }));
+
+        if (members.length === 0) {
+          alert('No member data found in the spreadsheet.');
+          return;
+        }
+
+        buildTicker(members);
+      } catch (err) {
+        alert('Error reading file: ' + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
   });
-  let html = '';
-  buyers.forEach(buyer => {
-    const owers = byBuyer[buyer.id];
-    if (!owers) return;
-    const totalOwed = Object.values(owers).reduce((s, v) => s + v.cost, 0);
-    const venmoBase = buyer.venmo_handle ? `https://venmo.com/${buyer.venmo_handle}?txn=pay` : null;
-    html += `<div class="buyer-section">
-      <div class="buyer-section-header">
-        <div>
-          <div class="buyer-section-name">Pay ${buyer.name}</div>
-          <div class="buyer-section-sub">${buyer.venmo_handle ? '@' + buyer.venmo_handle : 'no venmo set'}</div>
-        </div>
-        <div class="buyer-total">$${totalOwed.toFixed(2)}</div>
-      </div>`;
-    Object.entries(owers).forEach(([userName, { cans, cost }]) => {
-      const note = encodeURIComponent(`Gas - ${cans} can${cans !== 1 ? 's' : ''}`);
-      const venmoDeepLink = buyer.venmo_handle ? `venmo://paycharge?txn=pay&recipients=${buyer.venmo_handle}&amount=${cost.toFixed(2)}&note=${note}` : null;
-      const venmoWebLink = venmoBase ? `${venmoBase}&amount=${cost.toFixed(2)}&note=${note}` : null;
-      const appleLink = buyer.phone ? `sms:${buyer.phone}&body=${encodeURIComponent('Sending $' + cost.toFixed(2) + ' for gas (' + cans + ' cans) — Apple Pay')}` : null;
-      html += `<div class="ower-row">
-        <div>
-          <div class="ower-name">${userName}</div>
-          <div style="font-family:'Patrick Hand',cursive;font-size:12px;color:var(--pencil-faint)">${cans} can${cans !== 1 ? 's' : ''} · ${cans * 5} gal</div>
-          <div class="pay-btns">
-            ${venmoDeepLink ? `<a href="${venmoDeepLink}" onclick="setTimeout(()=>{window.open('${venmoWebLink}','_blank')},500);return true;" class="btn btn-sm btn-venmo">venmo</a>` : ''}
-            ${appleLink ? `<a href="${appleLink}" class="btn btn-sm btn-apple">apple pay</a>` : ''}
-            <button class="btn btn-sm btn-outline" onclick="markPaid('${userName.replace(/'/g,"\\'")}', ${buyer.id})">✓ mark paid</button>
-          </div>
-        </div>
-        <div class="ower-amount">$${cost.toFixed(2)}</div>
-      </div>`;
+
+  function buildTicker(members) {
+    track.innerHTML = '';
+
+    // Render items twice so the seamless loop works
+    [members, members].forEach(group => {
+      group.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'anniv-member';
+        el.innerHTML = `
+          <div class="anniv-badge"><span>${m.years}</span></div>
+          <div>
+            <span class="anniv-name">${escapeHtml(m.name)}</span>
+            ${m.location ? `<span class="anniv-location">${escapeHtml(m.location)}</span>` : ''}
+          </div>`;
+        track.appendChild(el);
+      });
     });
-    html += `</div><hr class="section-divider">`;
-  });
-  el.innerHTML = html || '<div class="empty-state">all paid up!</div>';
-}
 
-async function markPaid(userName, buyerId) {
-  const { error } = await sb.from('gas_entries').update({ paid: true }).eq('user_name', userName).eq('buyer_id', buyerId).eq('paid', false);
-  if (error) { showToast('error: ' + error.message, true); return; }
-  showToast(userName + ' marked paid');
-  renderPayments();
-}
+    // Adjust speed based on number of members (more members = longer duration)
+    const duration = Math.max(15, members.length * 5);
+    track.style.animationDuration = duration + 's';
 
-// ---- QR CODES ----
-async function renderQRCodes() {
-  const el = document.getElementById('qr-grid');
-  if (!el) return;
-  if (buyers.length === 0) { el.innerHTML = '<p style="font-family:\'Patrick Hand\',cursive;color:var(--pencil-faint);font-size:12px;text-align:center;padding:8px 0">no buyers yet</p>'; return; }
-  const { data: allEntries } = await sb.from('gas_entries').select('buyer_id, cans');
-  const usedPerBuyer = {};
-  (allEntries || []).forEach(e => { usedPerBuyer[e.buyer_id] = (usedPerBuyer[e.buyer_id] || 0) + e.cans; });
-  const appUrl = window.location.href.split('?')[0];
-  el.innerHTML = '';
-  for (const b of buyers) {
-    const used = usedPerBuyer[b.id] || 0;
-    const remaining = Math.max(0, b.cans_bought - used);
-    const depleted = remaining === 0;
-    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&ecc=M&data=' + encodeURIComponent(appUrl + '?buyer=' + b.id);
-    const div = document.createElement('div');
-    div.className = 'qr-card' + (depleted ? ' qr-depleted' : '');
-    div.innerHTML = `<img src="${qrSrc}" width="140" height="140" style="display:block;margin:0 auto 6px;background:#fff;padding:3px" alt="QR for ${b.name}" onerror="this.style.display='none'" />
-      <div class="qr-buyer-name">${b.name}</div>
-      <div class="qr-cans">${depleted ? 'out of gas' : remaining + ' can' + (remaining !== 1 ? 's' : '') + ' left'}</div>`;
-    el.appendChild(div);
+    uploadPrompt.style.display = 'none';
+    trackOuter.classList.add('active');
   }
-}
 
-async function resetDay() {
-  if (!confirm("delete today's entries?")) return;
-  const { error } = await sb.from('gas_entries').delete().eq('entry_date', todayStr());
-  if (error) { showToast('error: ' + error.message, true); return; }
-  renderDashboard();
-  showToast('today reset');
-}
-
-async function clearAll() {
-  if (!confirm('clear all usage entries and reset can counts to 0? buyers stay. cannot undo.')) return;
-  const { error: e1 } = await sb.from('gas_entries').delete().gte('id', 0);
-  if (e1) { showToast('error: ' + e1.message, true); return; }
-  const { error: e2 } = await sb.from('gas_buyers').update({ cans_bought: 0 }).gte('id', 0);
-  if (e2) { showToast('error: ' + e2.message, true); return; }
-  await loadBuyers(); renderDashboard(); renderAdminBuyers(); await populateBuyerSelect();
-  showToast('all data reset');
-}
-
-init();
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
 </script>
 </body>
 </html>
