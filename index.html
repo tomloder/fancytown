@@ -278,6 +278,181 @@
 
     /* spacing between page sections */
     .page-sections { display: flex; flex-direction: column; gap: 60px; }
+
+    /* ────────────────────────────────────────────
+       TABLET  ≤ 1024px
+    ──────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+
+      /* Header */
+      .header-inner { gap: 30px; padding: 10px 24px; }
+      .logo { width: auto; }
+      nav a { font-size: 14px; }
+
+      /* Hero */
+      .hero { height: 380px; }
+      .hero-content { left: 40px; width: 480px; gap: 28px; }
+      .hero-title { font-size: 44px; line-height: 54px; }
+      .hero-desc { font-size: 16px; }
+
+      /* Events crawl */
+      .events-crawl { gap: 24px; overflow-x: auto; }
+      .cal-item { width: auto; min-width: 280px; }
+
+      /* Drive cards */
+      .drive-section { padding: 0 24px; }
+      .cards-grid { gap: 16px; flex-wrap: wrap; justify-content: center; }
+      .activity-card { width: calc(50% - 8px); height: auto; flex-shrink: unset; }
+      .card-img { width: 100%; height: 180px; }
+
+      /* News */
+      .news-section { padding: 0 24px; }
+      .news-row { flex-direction: column; gap: 24px; }
+      .story-card { width: 100%; }
+      .story-img { width: 220px; height: 170px; }
+
+      /* Newsletter */
+      .newsletter-banner { height: auto; flex-wrap: wrap; gap: 20px; }
+      .newsletter-actions { flex-wrap: wrap; }
+
+      /* Join */
+      .join-section { height: auto; }
+      .join-inner { gap: 0; }
+      .join-photo-col { width: 340px; height: 480px; flex-shrink: 0; }
+      .join-content { padding: 40px 32px 40px 32px; width: auto; flex: 1; }
+
+      /* Sponsors */
+      .sponsors-section { padding: 0 24px 48px; }
+      .sponsors-grid { flex-wrap: wrap; }
+      .sponsor-placeholder { flex: 1 1 calc(50% - 10px); min-width: 160px; }
+
+      /* Sections gap */
+      .page-sections { gap: 48px; }
+    }
+
+    /* ────────────────────────────────────────────
+       MOBILE  ≤ 768px
+    ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+
+      /* Header — collapse nav to hamburger */
+      .header-inner { padding: 10px 16px; height: auto; min-height: 64px; flex-wrap: wrap; gap: 0; position: relative; }
+      .logo { width: auto; flex: 1; }
+      nav {
+        display: none; flex-direction: column; align-items: flex-start;
+        width: 100%; gap: 0; padding: 8px 0 12px;
+        border-top: 1px solid #eee;
+      }
+      nav.open { display: flex; }
+      nav a {
+        font-size: 15px; padding: 10px 0; width: 100%;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      nav a.active::after { display: none; }
+      .hamburger {
+        display: flex; flex-direction: column; justify-content: center; gap: 5px;
+        width: 36px; height: 36px; cursor: pointer; background: none; border: none;
+        padding: 4px; flex-shrink: 0;
+      }
+      .hamburger span {
+        display: block; width: 22px; height: 2px;
+        background: #052175; border-radius: 2px;
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+      .hamburger.open span:nth-child(2) { opacity: 0; }
+      .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+      /* Hero */
+      .hero { height: 320px; }
+      .hero-content { left: 20px; right: 20px; width: auto; gap: 20px; }
+      .hero-title { font-size: 32px; line-height: 40px; }
+      .hero-desc { font-size: 14px; }
+      .btn-member { font-size: 15px; padding: 9px 16px; }
+
+      /* Events crawl — stack vertically */
+      .events-crawl {
+        height: auto; flex-direction: column; align-items: stretch;
+        gap: 0; padding: 0; overflow: visible;
+      }
+      .events-label {
+        width: 100%; border-right: none; border-bottom: 4px solid #fff;
+        height: 48px; font-size: 16px;
+      }
+      .cal-item {
+        width: 100%; padding: 14px 16px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        min-width: unset;
+      }
+
+      /* Drive cards — single column */
+      .drive-section { padding: 0 16px; gap: 20px; }
+      .section-title { font-size: 26px; }
+      .cards-grid { flex-direction: column; align-items: stretch; }
+      .activity-card { width: 100%; height: auto; }
+      .card-img { width: 100%; height: 200px; }
+
+      /* News */
+      .news-section { padding: 0 16px; gap: 16px; }
+      .news-title { font-size: 22px; }
+      .story-card { flex-direction: column; width: 100%; }
+      .story-img { width: 100%; height: 200px; border-radius: 10px 10px 0 0; }
+      .story-body { padding: 16px; }
+      .story-title { font-size: 20px; }
+
+      /* Newsletter */
+      .newsletter-banner {
+        flex-direction: column; height: auto;
+        padding: 20px 16px; gap: 16px; align-items: flex-start;
+      }
+      .newsletter-img { width: 80px; height: 80px; }
+      .newsletter-title { font-size: 18px; }
+      .newsletter-actions { flex-direction: column; width: 100%; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; font-size: 16px; }
+
+      /* Join */
+      .join-section { height: auto; }
+      .join-inner { flex-direction: column; gap: 0; }
+      .join-photo-col { width: 100%; height: 280px; flex-shrink: 0; }
+      .join-content { width: 100%; padding: 32px 20px; }
+      .join-title { font-size: 30px; }
+      .join-desc { font-size: 15px; }
+
+      /* Anniversaries */
+      .anniv-ticker-wrap { height: auto; min-height: 72px; }
+      .anniv-upload-prompt { flex-direction: column; gap: 10px; padding: 16px; text-align: center; }
+
+      /* Sponsors */
+      .sponsors-section { padding: 0 16px 40px; gap: 24px; }
+      .sponsors-title { font-size: 26px; }
+      .sponsor-placeholder { flex: 1 1 calc(50% - 10px); height: 120px; }
+
+      /* Footer */
+      .footer { height: 200px; }
+      .footer-text { font-size: 26px; }
+
+      /* Sections gap */
+      .page-sections { gap: 36px; margin-top: 36px; margin-bottom: 36px; }
+    }
+
+    /* ────────────────────────────────────────────
+       SMALL MOBILE  ≤ 480px
+    ──────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .hero { height: 260px; }
+      .hero-title { font-size: 26px; line-height: 32px; }
+      .hero-desc { font-size: 13px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+      .logo-name { font-size: 22px; }
+      .logo-sub { font-size: 9px; letter-spacing: 0.8px; }
+      .card-title { font-size: 18px; }
+      .card-text { font-size: 14px; }
+      .sponsor-placeholder { flex: 1 1 100%; }
+      .newsletter-banner { border-radius: 6px; }
+      .join-photo-col { height: 220px; }
+    }
+
+    /* Hide hamburger on desktop/tablet */
+    .hamburger { display: none; }
   </style>
 </head>
 <body>
@@ -292,10 +467,13 @@
         <span class="logo-sub">Porsche Club of America</span>
       </div>
     </div>
-    <nav>
-      <a href="#" class="active">Home</a>
-      <a href="#">News &amp; Events</a>
-      <a href="#">Drive with Us</a>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="main-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="article.html">News &amp; Events</a>
+      <a href="drive-with-us.html">Drive with Us</a>
       <a href="#">Get Involved</a>
       <a href="#">Cars &amp; Tech</a>
       <a href="#">About the Club</a>
@@ -373,7 +551,7 @@
         <div class="card-body">
           <div class="card-title">Driver Education</div>
           <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
-          <a href="#" class="btn-learn">Learn More</a>
+          <a href="hpde-overview.html" class="btn-learn">Learn More</a>
         </div>
       </div>
       <div class="activity-card">
@@ -381,7 +559,7 @@
         <div class="card-body">
           <div class="card-title">Autocross</div>
           <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
-          <a href="#" class="btn-learn">Learn More</a>
+          <a href="drive-with-us.html" class="btn-learn">Learn More</a>
         </div>
       </div>
       <div class="activity-card">
@@ -389,7 +567,7 @@
         <div class="card-body">
           <div class="card-title">Rally</div>
           <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
-          <a href="#" class="btn-learn">Learn More</a>
+          <a href="drive-with-us.html" class="btn-learn">Learn More</a>
         </div>
       </div>
       <div class="activity-card">
@@ -397,7 +575,7 @@
         <div class="card-body">
           <div class="card-title">Touring</div>
           <p class="card-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin landjaeger capicola strip.</p>
-          <a href="#" class="btn-learn">Learn More</a>
+          <a href="drive-with-us.html" class="btn-learn">Learn More</a>
         </div>
       </div>
     </div>
@@ -407,7 +585,7 @@
   <div class="news-section">
     <div class="news-header">
       <h2 class="news-title">News from the region</h2>
-      <a href="#" class="link-btn">More news &gt;</a>
+      <a href="article.html" class="link-btn">More news &gt;</a>
     </div>
     <div class="news-grid">
       <div class="news-row">
@@ -416,9 +594,9 @@
           <div class="story-img"><img src="https://www.figma.com/api/mcp/asset/93ec5028-e132-432c-8c49-e8a7318ac767" alt="2024 Phil-a-Trunk" /></div>
           <div class="story-body">
             <span class="story-tag">SOCIAL</span>
-            <a href="#" class="story-title">2024 Phil-a-Trunk</a>
+            <a href="article.html" class="story-title">2024 Phil-a-Trunk</a>
             <p class="story-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin.</p>
-            <a href="#" class="read-more">Read more &gt;</a>
+            <a href="article.html" class="read-more">Read more &gt;</a>
           </div>
         </div>
         <!-- Story 2 -->
@@ -426,9 +604,9 @@
           <div class="story-img"><img src="https://www.figma.com/api/mcp/asset/a4fb2715-21a2-41d0-9d1b-da2d52b44ceb" alt="Drive-in movie night" /></div>
           <div class="story-body">
             <span class="story-tag">SOCIAL</span>
-            <a href="#" class="story-title">Drive-in movie night</a>
+            <a href="article.html" class="story-title">Drive-in movie night</a>
             <p class="story-text">Salami leberkas tongue tenderloin pork loin. Sausage tri-tip chicken pork belly shoulder ham hock, t-bone pork loin.</p>
-            <a href="#" class="read-more">Read more &gt;</a>
+            <a href="article.html" class="read-more">Read more &gt;</a>
           </div>
         </div>
       </div>
@@ -524,6 +702,17 @@
 <footer class="footer">
   <p class="footer-text">Footer</p>
 </footer>
+
+<!-- Hamburger menu toggle -->
+<script>
+  const hamburger = document.getElementById('hamburger');
+  const mainNav   = document.getElementById('main-nav');
+  hamburger.addEventListener('click', function () {
+    const open = mainNav.classList.toggle('open');
+    hamburger.classList.toggle('open', open);
+    hamburger.setAttribute('aria-expanded', open);
+  });
+</script>
 
 <!-- SheetJS for reading .xlsx -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
