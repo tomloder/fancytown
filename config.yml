@@ -1,0 +1,185 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Decap CMS Configuration for Riesentöter PCA
+# Docs: https://decapcms.org/docs/configuration-options/
+# ─────────────────────────────────────────────────────────────────────────────
+
+backend:
+  name: github
+  repo: tomloder/fancytown          # ← your GitHub username/repo
+  branch: main                       # ← branch to commit to
+  # OAuth is handled via a proxy — see SETUP.md for instructions
+  base_url: https://decap-proxy.yourname.workers.dev  # ← update after Cloudflare setup
+
+# Where uploaded images/files are stored in the repo
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COLLECTIONS — each one appears as a section in the CMS sidebar
+# ─────────────────────────────────────────────────────────────────────────────
+collections:
+
+  # ── SITE SETTINGS (singleton) ──────────────────────────────────────────────
+  - name: "settings"
+    label: "Site Settings"
+    files:
+      - name: "general"
+        label: "General Settings"
+        file: "_data/settings.json"
+        fields:
+          - { label: "Site Title", name: "site_title", widget: "string" }
+          - { label: "Tagline", name: "tagline", widget: "string" }
+          - { label: "Contact Email", name: "contact_email", widget: "string" }
+          - { label: "Facebook URL", name: "facebook_url", widget: "string", required: false }
+          - { label: "Instagram URL", name: "instagram_url", widget: "string", required: false }
+
+  # ── HOMEPAGE (singleton) ───────────────────────────────────────────────────
+  - name: "homepage"
+    label: "Homepage"
+    files:
+      - name: "homepage"
+        label: "Homepage Content"
+        file: "_data/homepage.json"
+        fields:
+          - label: "Hero"
+            name: "hero"
+            widget: "object"
+            fields:
+              - { label: "Heading", name: "heading", widget: "string" }
+              - { label: "Description", name: "description", widget: "text" }
+              - { label: "Button Label", name: "button_label", widget: "string" }
+              - { label: "Button URL", name: "button_url", widget: "string" }
+              - { label: "Background Image", name: "image", widget: "image" }
+
+          - label: "\"Get Out and Drive\" Section"
+            name: "drive_section"
+            widget: "object"
+            fields:
+              - { label: "Heading", name: "heading", widget: "string" }
+              - { label: "Description", name: "description", widget: "text" }
+
+          - label: "\"Join the Club\" Section"
+            name: "join_section"
+            widget: "object"
+            fields:
+              - { label: "Heading", name: "heading", widget: "string" }
+              - { label: "Body Text", name: "body", widget: "text" }
+              - label: "Bullet Points"
+                name: "bullets"
+                widget: "list"
+                field: { label: "Point", name: "point", widget: "string" }
+              - { label: "Member Photo", name: "photo", widget: "image" }
+              - { label: "Photo Caption", name: "photo_caption", widget: "string" }
+              - { label: "Button Label", name: "button_label", widget: "string" }
+              - { label: "Button URL", name: "button_url", widget: "string" }
+
+  # ── UPCOMING EVENTS ────────────────────────────────────────────────────────
+  - name: "events"
+    label: "Upcoming Events"
+    label_singular: "Event"
+    folder: "_data/events"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    identifier_field: "title"
+    fields:
+      - { label: "Event Title", name: "title", widget: "string" }
+      - { label: "Event Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM D, YYYY", time_format: false }
+      - { label: "Month Label (e.g. OCT)", name: "month_label", widget: "string", hint: "3-letter abbreviation shown on calendar icon" }
+      - { label: "Day", name: "day", widget: "number" }
+      - { label: "Location", name: "location", widget: "string" }
+      - { label: "Description", name: "description", widget: "text" }
+      - label: "Event Type"
+        name: "type"
+        widget: "select"
+        options: ["HPDE", "Autocross", "Rally", "Touring", "Social", "Other"]
+      - { label: "Registration URL", name: "register_url", widget: "string", required: false }
+      - { label: "\"Intro to DE\" Badge", name: "intro_de", widget: "boolean", default: false }
+
+  # ── NEWS & ARTICLES ────────────────────────────────────────────────────────
+  - name: "news"
+    label: "News & Articles"
+    label_singular: "Article"
+    folder: "_data/news"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    identifier_field: "title"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Publish Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM D, YYYY", time_format: false }
+      - label: "Category"
+        name: "category"
+        widget: "select"
+        options: ["HPDE", "Autocross", "Rally", "Touring", "Social", "Club News", "Technical"]
+      - { label: "Featured Image", name: "image", widget: "image" }
+      - { label: "Summary", name: "summary", widget: "text", hint: "Short teaser shown on the homepage news cards" }
+      - { label: "Body", name: "body", widget: "markdown" }
+      - { label: "Featured on Homepage", name: "featured", widget: "boolean", default: false }
+
+  # ── SPONSORS ───────────────────────────────────────────────────────────────
+  - name: "sponsors"
+    label: "Sponsors"
+    label_singular: "Sponsor"
+    folder: "_data/sponsors"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: "name"
+    fields:
+      - { label: "Sponsor Name", name: "name", widget: "string" }
+      - { label: "Logo", name: "logo", widget: "image" }
+      - { label: "Website URL", name: "url", widget: "string" }
+      - { label: "Sort Order", name: "order", widget: "number", default: 99 }
+
+  # ── HPDE EVENTS & SCHEDULE ─────────────────────────────────────────────────
+  - name: "hpde_events"
+    label: "HPDE Schedule"
+    label_singular: "HPDE Event"
+    folder: "_data/hpde"
+    create: true
+    slug: "{{year}}-{{slug}}"
+    identifier_field: "title"
+    fields:
+      - { label: "Event Name", name: "title", widget: "string" }
+      - { label: "Track / Venue", name: "venue", widget: "string" }
+      - { label: "Location (City, State)", name: "location", widget: "string" }
+      - { label: "Event Date Start", name: "date_start", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM D, YYYY", time_format: false }
+      - { label: "Event Date End", name: "date_end", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM D, YYYY", time_format: false }
+      - { label: "Month Label (e.g. APR)", name: "month_label", widget: "string" }
+      - { label: "Day", name: "day", widget: "number" }
+      - { label: "Safety Tech Date", name: "tech_date", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM D, YYYY", time_format: false }
+      - { label: "Safety Tech Location", name: "tech_location", widget: "string" }
+      - { label: "Safety Tech Location URL", name: "tech_location_url", widget: "string", required: false }
+      - { label: "Description", name: "description", widget: "text" }
+      - { label: "\"Intro to DE\" Badge", name: "intro_de", widget: "boolean", default: false }
+      - { label: "Registration URL", name: "register_url", widget: "string", required: false }
+      - { label: "Lap Video URL", name: "lap_video_url", widget: "string", required: false }
+      - { label: "Event Photos URL", name: "photos_url", widget: "string", required: false }
+      - { label: "Track Map Image", name: "track_map", widget: "image", required: false }
+
+  # ── MEMBER ANNIVERSARIES ───────────────────────────────────────────────────
+  - name: "anniversaries"
+    label: "Member Anniversaries"
+    label_singular: "Member"
+    folder: "_data/anniversaries"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: "name"
+    fields:
+      - { label: "Member Name", name: "name", widget: "string" }
+      - { label: "Location (City, State)", name: "location", widget: "string" }
+      - { label: "Years as Member", name: "years", widget: "number" }
+
+  # ── DER GASSER NEWSLETTER ──────────────────────────────────────────────────
+  - name: "newsletter"
+    label: "Der Gasser Newsletter"
+    label_singular: "Issue"
+    folder: "_data/newsletter"
+    create: true
+    slug: "{{year}}-{{month}}"
+    identifier_field: "title"
+    fields:
+      - { label: "Issue Title", name: "title", widget: "string", hint: "e.g. October 2024" }
+      - { label: "Cover Image", name: "cover", widget: "image" }
+      - { label: "Description", name: "description", widget: "text" }
+      - { label: "Download URL", name: "download_url", widget: "string", hint: "Link to the PDF" }
+      - { label: "Published Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", date_format: "MMMM YYYY", time_format: false }
+      - { label: "Show on Homepage", name: "featured", widget: "boolean", default: true }
